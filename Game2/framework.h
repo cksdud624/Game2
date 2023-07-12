@@ -13,3 +13,10 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <vector>
+#include <iostream>
+#include "Objects.h"
+#include "Tools.h"
+#include "DrawTools.h"
+#include <ctime>
+#include <cmath>

@@ -6,10 +6,30 @@
 
 #define MAX_LOADSTRING 100
 
+using namespace std;
+
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
+
+
+//함수
+void Update();
+void DrawDoubleBuffering(HDC& hdc);
+
+
+#ifdef UNICODE
+
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
+
+#else
+
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console") 
+
+#endif
+
+
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -43,16 +63,36 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MSG msg;
 
     // 기본 메시지 루프입니다:
-    while (GetMessage(&msg, nullptr, 0, 0))
+
+    static clock_t oldtime = clock();
+    static clock_t newtime;
+
+    while (true)
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+        else
+        {
+            newtime = clock();
+            if (newtime - oldtime >= 34)
+            {
+                Update();
+                oldtime = newtime;
+            }
         }
     }
 
-    return (int) msg.wParam;
+    return (int)msg.wParam;
 }
 
 
@@ -75,7 +115,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GAME2));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_GAME2);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -93,12 +133,13 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //        이 함수를 통해 인스턴스 핸들을 전역 변수에 저장하고
 //        주 프로그램 창을 만든 다음 표시합니다.
 //
+static HWND hWnd;
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
+       600, 200, 800, 800, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -121,10 +162,61 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
+
+//전역 변수
+#define MAPSIZE 10 //맵 크기 설정
+
+HDC mem1dc; // 더블 버퍼링
+
+RECT rectView; //화면 크기
+
+static HBITMAP hBit, oldBit; // 더블 버퍼링 비트맵
+static Drawer player;
+
+static Line BorderLine[4];
+
+static vector<POINT> movepoints;
+
+static int linedirection = -1;//선을 그리는 방향
+
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_CREATE:
+        GetClientRect(hWnd, &rectView);
+
+        player.setX(rectView.left + MAPSIZE);
+        player.setY(rectView.top + MAPSIZE);
+        player.setWidth(20);
+        player.setHeight(20);
+        player.setSpeed(8);
+
+        BorderLine[0].setDirection(1);//외곽선 하단
+        BorderLine[0].setStartX(rectView.left + MAPSIZE);
+        BorderLine[0].setStartY(rectView.bottom - MAPSIZE);
+        BorderLine[0].setEndX(rectView.right - MAPSIZE);
+        BorderLine[0].setEndY(rectView.bottom - MAPSIZE);
+
+        BorderLine[1].setDirection(2);//외곽선 우측
+        BorderLine[1].setStartX(rectView.right - MAPSIZE);
+        BorderLine[1].setStartY(rectView.bottom - MAPSIZE);
+        BorderLine[1].setEndX(rectView.right - MAPSIZE);
+        BorderLine[1].setEndY(rectView.top + MAPSIZE);
+
+        BorderLine[2].setDirection(1);//외곽선 상단
+        BorderLine[2].setStartX(rectView.left + MAPSIZE);
+        BorderLine[2].setStartY(rectView.top + MAPSIZE);
+        BorderLine[2].setEndX(rectView.right - MAPSIZE);
+        BorderLine[2].setEndY(rectView.top + MAPSIZE);
+
+        BorderLine[3].setDirection(2);//외곽선 좌측
+        BorderLine[3].setStartX(rectView.left + MAPSIZE);
+        BorderLine[3].setStartY(rectView.top + MAPSIZE);
+        BorderLine[3].setEndX(rectView.left + MAPSIZE);
+        BorderLine[3].setEndY(rectView.bottom - MAPSIZE);
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -147,6 +239,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+            DrawDoubleBuffering(hdc);
             EndPaint(hWnd, &ps);
         }
         break;
@@ -158,6 +251,117 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
+//메소드
+void Update()
+{
+    vector<int> OnLines;
+    vector<int> BeforeOnLines;
+    InvalidateRect(hWnd, NULL, FALSE);
+    //연산 직전의 플레이어의 좌표
+    int BeforeX = player.getX();
+    int BeforeY = player.getY();
+    BorderCheck(BorderLine, player, BeforeOnLines);
+
+
+    //이동
+    if (GetKeyState(VK_LEFT) < 0)
+    {
+        player.setX(player.getX() - player.getSpeed());
+        player.setDirection(3);
+    }
+    else if (GetKeyState(VK_RIGHT) < 0)
+    {
+        player.setX(player.getX() + player.getSpeed());
+        player.setDirection(1);
+    }
+    else if (GetKeyState(VK_DOWN) < 0)
+    {
+        player.setY(player.getY() + player.getSpeed());
+        player.setDirection(0);
+    }
+    else if (GetKeyState(VK_UP) < 0)
+    {
+        player.setY(player.getY() - player.getSpeed());
+        player.setDirection(2);
+    }
+    else
+        player.setDirection(-1);//방향이 존재하지 않는다
+
+
+    //스페이스바의 눌림에 따른 기능
+    if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
+    {
+        OnlyOnWindow(MAPSIZE, player, rectView);
+        if (player.getDrawing() == 0)
+        {
+            movepoints.push_back({ BeforeX, BeforeY });
+            linedirection = player.getDirection();
+        }
+
+        if (!(player.getDirection() == -1 || player.getDirection() == linedirection
+            || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
+        {
+            movepoints.push_back({ BeforeX, BeforeY });
+            linedirection = player.getDirection();
+        }
+        player.setDrawing(1);
+    }
+    else//도형과 맵 테두리 이동
+    {
+        if (player.getDrawing() == 1)
+        {
+            player.setDrawing(0);
+            player.setX(movepoints[0].x);
+            player.setY(movepoints[0].y);
+            movepoints.clear();
+            linedirection = -1;
+        }
+
+        BorderCheck(BorderLine, player, OnLines);
+        if (OnLines.size() < 1)
+        {
+            for (int i = 0; i < BeforeOnLines.size(); i++)
+            {
+                CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
+            }
+        }
+        OnLines.clear();
+    }
+
+}
+
+void DrawDoubleBuffering(HDC& hdc)
+{
+    mem1dc = CreateCompatibleDC(hdc);
+    if (hBit == NULL)
+        hBit = CreateCompatibleBitmap(hdc, rectView.right, rectView.bottom);
+    oldBit = (HBITMAP)SelectObject(mem1dc, hBit);
+    FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
+
+    Rectangle(mem1dc, rectView.left + MAPSIZE, rectView.top + MAPSIZE,
+        rectView.right - MAPSIZE, rectView.bottom - MAPSIZE);
+
+    POINT playerpoint = { player.getX(), player.getY() };
+
+    for (int i = 0; i < movepoints.size(); i++)//선을 그림
+    {
+        if(i == movepoints.size() - 1)
+            DrawLineOnSpace(mem1dc, movepoints[i], playerpoint);
+        else
+            DrawLineOnSpace(mem1dc, movepoints[i], movepoints[i + 1]);
+    }
+
+    DrawRectangle(mem1dc, player);
+
+    BitBlt(hdc, 0, 0, rectView.right, rectView.bottom, mem1dc, 0, 0, SRCCOPY);
+    SelectObject(mem1dc, oldBit);
+    DeleteDC(mem1dc);
+}
+
+
+
+
 
 // 정보 대화 상자의 메시지 처리기입니다.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
