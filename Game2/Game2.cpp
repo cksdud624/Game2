@@ -301,7 +301,7 @@ void Update()
             linedirection = player.getDirection();
         }
 
-        if (!(player.getDirection() == -1 || player.getDirection() == linedirection
+        if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
             || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
         {
             movepoints.push_back({ BeforeX, BeforeY });
@@ -309,15 +309,15 @@ void Update()
         }
         player.setDrawing(1);
 
-        if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)
+        if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)//자신의 선에 충돌하는지 확인
         {
             player.setX(movepoints[0].x);
             player.setY(movepoints[0].y);
             movepoints.clear();
         }
 
-            BorderCheck(BorderLine, player, OnLines);
-            if (OnLines.size() >= 1)
+            BorderCheck(BorderLine, player, OnLines);//외곽선 충돌 체크
+            if (OnLines.size() >= 1)//땅 점령후 도형 생성
             {
                 movepoints.push_back({ player.getX(), player.getY() });
                 player.setDrawing(0);
@@ -344,7 +344,7 @@ void Update()
     }
     else//도형과 맵 테두리 이동
     {
-        if (player.getDrawing() == 1)
+        if (player.getDrawing() == 1)//스페이스바를 떼면 원래 위치로 돌아옴
         {
             player.setDrawing(0);
             player.setX(movepoints[0].x);
@@ -354,14 +354,12 @@ void Update()
         }
 
         BorderCheck(BorderLine, player, OnLines);
-        if (OnLines.size() < 1)
+        if (OnLines.size() < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
         {
             for (int i = 0; i < BeforeOnLines.size(); i++)
             {
                 CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
             }
-            cout << BorderLine[1].getStartX() << endl;
-            cout << player.getX() << endl;
         }
         OnLines.clear();
     }
