@@ -10,6 +10,81 @@ bool OnLineCheckY(int x, int starty, int endy, Drawer& player);
 void BorderCheck(Line BorderLine[], Drawer& player, vector<int>& OnLines);
 void CorrectOverPosition(Line line, Drawer& player, int beforex, int beforey);
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
+void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
+bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
+
+bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY)
+{
+	int max, min;
+	if (movepoints.size() >= 2)
+	{
+		for (int i = 0; i < movepoints.size() - 1; i++)
+		{
+			if (movepoints[i].x == movepoints[i + 1].x)
+			{
+				int beforesign;
+				int aftersign;
+				if (movepoints[i].y < movepoints[i + 1].y)
+				{
+					min = movepoints[i].y;
+					max = movepoints[i + 1].y;
+				}
+				else
+				{
+					min = movepoints[i + 1].y;
+					max = movepoints[i].y;
+				}
+				if (BeforeX - movepoints[i].x > 0)
+					beforesign = 1;
+				else if (BeforeX - movepoints[i].x < 0)
+					beforesign = -1;
+				else
+					beforesign = 0;
+
+				if (player.getX() - movepoints[i].x > 0)
+					aftersign = 1;
+				else if (player.getX() - movepoints[i].x < 0)
+					aftersign = -1;
+				else
+					aftersign = 0;
+
+				cout << BeforeX - movepoints[i].x << " "
+					<< player.getX() - movepoints[i].x << " " << i <<  endl;
+				if (player.getY() <= max && player.getY() >= min &&
+					aftersign != 0 && beforesign != 0 &&
+					aftersign != beforesign)
+				{
+					return true;
+				}
+			}
+			else if (movepoints[i].y == movepoints[i + 1].y)
+			{
+				if (movepoints[i].x < movepoints[i + 1].x)
+				{
+					min = movepoints[i].x;
+					max = movepoints[i + 1].x;
+				}
+				else
+				{
+					min = movepoints[i + 1].x;
+					max = movepoints[i].x;
+				}
+			}
+		}
+	}
+
+	return false;
+};
+
+void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines)
+{
+	int linedirection;
+	if (start.x == end.x)//x¼±
+		linedirection = 1;
+	else//y¼±
+		linedirection = 2;
+}
+
 
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT &rectView)
 {

@@ -180,13 +180,15 @@ static vector<POINT> movepoints;
 static int linedirection = -1;//선을 그리는 방향
 
 
+static vector<vector<POINT>> Areas;//플레이어가 차지한 공간
+
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
     case WM_CREATE:
         GetClientRect(hWnd, &rectView);
-
         player.setX(rectView.left + MAPSIZE);
         player.setY(rectView.top + MAPSIZE);
         player.setWidth(20);
@@ -306,6 +308,39 @@ void Update()
             linedirection = player.getDirection();
         }
         player.setDrawing(1);
+
+        if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)
+        {
+            player.setX(movepoints[0].x);
+            player.setY(movepoints[0].y);
+            movepoints.clear();
+        }
+
+            BorderCheck(BorderLine, player, OnLines);
+            if (OnLines.size() >= 1)
+            {
+                movepoints.push_back({ player.getX(), player.getY() });
+                player.setDrawing(0);
+                if (movepoints.size() <= 2)
+                {
+                    player.setX(movepoints[0].x);
+                    player.setY(movepoints[0].y);
+                }
+                if (movepoints.size() > 2)
+                {
+                    player.setX(movepoints[movepoints.size() - 1].x);
+                    player.setY(movepoints[movepoints.size() - 1].y);
+                    vector<POINT> temp;
+                    for (int i = 0; i < movepoints.size(); i++)
+                    {
+                        temp.push_back(movepoints[i]);
+                    }
+                    Areas.push_back(temp);
+                    linedirection = -1;
+                }
+                movepoints.clear();
+            }
+        OnLines.clear();
     }
     else//도형과 맵 테두리 이동
     {
@@ -325,6 +360,8 @@ void Update()
             {
                 CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
             }
+            cout << BorderLine[1].getStartX() << endl;
+            cout << player.getX() << endl;
         }
         OnLines.clear();
     }
@@ -343,6 +380,26 @@ void DrawDoubleBuffering(HDC& hdc)
         rectView.right - MAPSIZE, rectView.bottom - MAPSIZE);
 
     POINT playerpoint = { player.getX(), player.getY() };
+
+
+    for (int i = 0; i < Areas.size(); i++)
+    {
+        POINT* temp = new POINT[Areas[i].size()];
+
+        HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
+        HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
+        for (int j = 0; j < Areas[i].size(); j++)
+        {
+            temp[j] = Areas[i][j];
+        }
+        Polygon(mem1dc, temp, Areas[i].size());
+
+        SelectObject(mem1dc, oldBrush);
+        DeleteObject(myBrush);
+
+        delete[] temp;
+    }
+
 
     for (int i = 0; i < movepoints.size(); i++)//선을 그림
     {
