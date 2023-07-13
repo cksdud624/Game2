@@ -18,7 +18,7 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 	int max, min;
 	if (movepoints.size() >= 2)
 	{
-		for (int i = 0; i < movepoints.size() - 1; i++)
+		for (int i = 0; i < movepoints.size() - 2; i++)
 		{
 			if (movepoints[i].x == movepoints[i + 1].x)
 			{
@@ -34,31 +34,32 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 					min = movepoints[i + 1].y;
 					max = movepoints[i].y;
 				}
-				if (BeforeX - movepoints[i].x > 0)
-					beforesign = 1;
-				else if (BeforeX - movepoints[i].x < 0)
+
+				if (BeforeX - movepoints[i].x < 0)//謝難
 					beforesign = -1;
-				else
+				else if (BeforeX - movepoints[i].x > 0)//辦難
+					beforesign = 1;
+				else//偽擎 高
 					beforesign = 0;
 
-				if (player.getX() - movepoints[i].x > 0)
-					aftersign = 1;
-				else if (player.getX() - movepoints[i].x < 0)
+				if (player.getX() - movepoints[i].x < 0)//謝難
 					aftersign = -1;
+				else if (player.getX() - movepoints[i].x > 0)
+					aftersign = 1;
 				else
 					aftersign = 0;
-
-				cout << BeforeX - movepoints[i].x << " "
-					<< player.getX() - movepoints[i].x << " " << i <<  endl;
-				if (player.getY() <= max && player.getY() >= min &&
-					aftersign != 0 && beforesign != 0 &&
-					aftersign != beforesign)
+				if (player.getY() >= min && player.getY() <= max)
 				{
-					return true;
+					if (beforesign == -1 && (aftersign == 1 || aftersign == 0))
+						return true;
+					else if (beforesign == 1 && (aftersign == -1 || aftersign == 0))
+						return true;
 				}
 			}
 			else if (movepoints[i].y == movepoints[i + 1].y)
 			{
+				int beforesign;
+				int aftersign;
 				if (movepoints[i].x < movepoints[i + 1].x)
 				{
 					min = movepoints[i].x;
@@ -68,6 +69,28 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 				{
 					min = movepoints[i + 1].x;
 					max = movepoints[i].x;
+				}
+
+				if (BeforeY - movepoints[i].y < 0)
+					beforesign = -1;
+				else if (BeforeY - movepoints[i].y > 0)
+					beforesign = 1;
+				else//偽擎 高
+					beforesign = 0;
+
+				if (player.getY() - movepoints[i].y < 0)//謝難
+					aftersign = -1;
+				else if (player.getY() - movepoints[i].y > 0)
+					aftersign = 1;
+				else
+					aftersign = 0;
+
+				if (player.getX() >= min && player.getX() <= max)
+				{
+					if (beforesign == -1 && (aftersign == 1 || aftersign == 0))
+						return true;
+					else if (beforesign == 1 && (aftersign == -1 || aftersign == 0))
+						return true;
 				}
 			}
 		}
