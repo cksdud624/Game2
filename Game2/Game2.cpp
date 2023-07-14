@@ -179,6 +179,8 @@ static vector<POINT> movepoints;
 
 static int linedirection = -1;//선을 그리는 방향
 
+static vector<POINT> ReturnLines;//스페이스바를 뗄 때 선 위에 있지 않으면 왔던 길을 되돌아와야됨
+
 
 static vector<vector<POINT>> Areas;//플레이어가 차지한 공간
 
@@ -259,6 +261,7 @@ void Update()
 {
     vector<int> OnLines;
     vector<int> BeforeOnLines;
+
     InvalidateRect(hWnd, NULL, FALSE);
     //연산 직전의 플레이어의 좌표
     int BeforeX = player.getX();
@@ -294,6 +297,8 @@ void Update()
     //스페이스바의 눌림에 따른 기능
     if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
     {
+        if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
+            return;
         OnlyOnWindow(MAPSIZE, player, rectView);
         if (player.getDrawing() == 0)
         {
@@ -347,21 +352,40 @@ void Update()
         if (player.getDrawing() == 1)//스페이스바를 떼면 원래 위치로 돌아옴
         {
             player.setDrawing(0);
-            player.setX(movepoints[0].x);
-            player.setY(movepoints[0].y);
-            movepoints.clear();
             linedirection = -1;
+            for (int i = 0; i < movepoints.size(); i++)
+            {
+                ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
+            }
+            player.setReturning(1);
+            movepoints.clear();
         }
 
-        BorderCheck(BorderLine, player, OnLines);
-        if (OnLines.size() < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
+        if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
         {
-            for (int i = 0; i < BeforeOnLines.size(); i++)
+            BorderCheck(BorderLine, player, OnLines);
+            if (OnLines.size() < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
             {
-                CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
+                for (int i = 0; i < BeforeOnLines.size(); i++)
+                {
+                    CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
+                }
             }
+            OnLines.clear();
         }
-        OnLines.clear();
+        else//돌아가는 상태일 때
+        {
+            int lastpointx = ReturnLines[ReturnLines.size() - 1].x;
+            int lastpointy = ReturnLines[ReturnLines.size() - 1].y;
+
+            if (lastpointx == player.getX() && lastpointy == player.getY())
+                ReturnLines.pop_back();
+            else
+                PlayerCorrectOnLine(lastpointx, lastpointy, BeforeX, BeforeY, player);
+
+            if (ReturnLines.size() <= 0)
+                player.setReturning(0);
+        }
     }
 
 }
@@ -380,9 +404,9 @@ void DrawDoubleBuffering(HDC& hdc)
     POINT playerpoint = { player.getX(), player.getY() };
 
 
-    for (int i = 0; i < Areas.size(); i++)
+    for (int i = 0; i < Areas.size(); i++)//도형을 그림
     {
-        POINT* temp = new POINT[Areas[i].size()];
+        POINT* temp = new POINT[Areas[i].size() + 1];
 
         HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
         HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
@@ -399,12 +423,20 @@ void DrawDoubleBuffering(HDC& hdc)
     }
 
 
-    for (int i = 0; i < movepoints.size(); i++)//선을 그림
+    for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
     {
         if(i == movepoints.size() - 1)
-            DrawLineOnSpace(mem1dc, movepoints[i], playerpoint);
+            DrawLine(mem1dc, movepoints[i], playerpoint);
         else
-            DrawLineOnSpace(mem1dc, movepoints[i], movepoints[i + 1]);
+            DrawLine(mem1dc, movepoints[i], movepoints[i + 1]);
+    }
+
+    for (int i = 0; i < ReturnLines.size(); i++)
+    {
+        if (i == ReturnLines.size() - 1)
+            DrawLine(mem1dc, ReturnLines[i], playerpoint);
+        else
+            DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
     }
 
     DrawRectangle(mem1dc, player);

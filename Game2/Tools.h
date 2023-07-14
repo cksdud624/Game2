@@ -12,6 +12,33 @@ void CorrectOverPosition(Line line, Drawer& player, int beforex, int beforey);
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
 void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
+void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
+
+void PlayerCorrectOnLine(int x, int y, int BeforeX, int BeforeY, Drawer& player)
+{
+	int min, max;
+
+	int beforelength;
+
+	if (x == BeforeX)//y¼±
+	{
+		beforelength = abs(BeforeY - y);
+		if (x != player.getX())
+			player.setX(x);
+
+		if (beforelength < abs(player.getY() - y))
+			player.setY(BeforeY);
+	}
+	else if (y == BeforeY)//x¼±
+	{
+		beforelength = abs(BeforeX - x);
+		if (y != player.getY())
+			player.setY(y);
+		if (beforelength < abs(player.getX() - x))
+			player.setX(BeforeX);
+
+	}
+}
 
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY)
 {
@@ -54,6 +81,8 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 						return true;
 					else if (beforesign == 1 && (aftersign == -1 || aftersign == 0))
 						return true;
+					else if (beforesign == 0 && aftersign == 0)
+						return true;
 				}
 			}
 			else if (movepoints[i].y == movepoints[i + 1].y)
@@ -90,6 +119,8 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 					if (beforesign == -1 && (aftersign == 1 || aftersign == 0))
 						return true;
 					else if (beforesign == 1 && (aftersign == -1 || aftersign == 0))
+						return true;
+					else if (beforesign == 0 && aftersign == 0)
 						return true;
 				}
 			}

@@ -31,6 +31,7 @@ private:
 	bool drawing;
 	int speed;
 	int direction;
+	int returning; //0 : 해당 없음 1 : 원래 위치로 돌아가는 중
 public:
 	void setX(int x) { this->x = x; }
 	void setY(int y) { this->y = y; }
@@ -39,6 +40,7 @@ public:
 	void setHeight(int height) { this->height = height; }
 	void setSpeed(int speed) { this->speed = speed; }
 	void setDirection(int direction) { this->direction = direction; }
+	void setReturning(int returning) { this->returning = returning; }
 
 	int getX() { return x; }
 	int getY() { return y; }
@@ -47,4 +49,5 @@ public:
 	int getHeight() { return height; }
 	int getSpeed() { return speed; }
 	int getDirection() { return direction; }
+	int getReturning() { return returning; }
 };
