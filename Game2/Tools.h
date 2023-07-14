@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 #include "Objects.h"
+#include <vector>
+#include <list>
 
 using namespace std;
 
@@ -13,6 +15,114 @@ void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
 void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
+void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection);
+
+void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection)
+{
+	list<POINT>::iterator originiter = origin.begin();
+	list<POINT>::iterator startiter = origin.begin();
+	list<POINT>::iterator tempiter;
+	list<POINT>::iterator turniter = origin.begin();
+	vector<POINT> minpoints;//x값이 최소인 좌표들
+	vector<POINT> maxpoints;//x값이 최대인 좌표들
+	vector<int> minindex;
+	vector<int> maxindex;
+	POINT start, turn;
+	int pointy;
+	int min = (*originiter).x, max = (*originiter).x;
+	for (POINT i : origin)//x의 최솟값, 최댓값을 구한다
+	{
+		if (i.x < min)
+			min = i.x;
+		if (i.x > max)
+			max = i.x;
+	}
+	int temp = 0;
+	for (POINT i : origin)//x값이 최대와 최소인 점을 저장
+	{
+		if (i.x == min)
+		{
+			minpoints.push_back(i);
+			minindex.push_back(temp);
+		}
+
+		if (i.x == max)
+		{
+			maxpoints.push_back(i);
+			maxindex.push_back(temp);
+		}
+		temp++;
+	}
+
+
+	max = minpoints[0].y;
+
+	pointy = 0;
+	for(int i = 0; i < minpoints.size(); i++)
+	{
+		if (minpoints[i].y > max)
+		{
+			max = minpoints[i].y;
+			pointy = i;
+		}
+	}
+	for (int i = 0; i < minindex[pointy]; i++)
+		startiter++;
+	start = *startiter;//가장 왼쪽에서 아래의 점
+
+	min = maxpoints[0].y;
+
+	pointy = 0;
+	for (int i = 0; i < maxpoints.size(); i++)
+	{
+		if (maxpoints[i].y < min)
+		{
+			min = maxpoints[i].y;
+			pointy = i;
+		}
+	}
+
+	for (int i = 0; i < maxindex[pointy]; i++)
+		turniter++;
+	turn = *turniter;//가장 오른쪽에서 위쪽의 점
+
+	if (turnpoint.x != -1)//우측 위의 경우
+	{
+		turn = turnpoint;
+	}
+	else
+	{
+		if (readingdirection == 1)
+		{
+			tempiter = startiter;
+			for (; tempiter != origin.end(); tempiter++)
+				result.push_back(*tempiter);
+
+			tempiter = originiter;
+
+			for (; tempiter != startiter; tempiter++)
+				result.push_back(*tempiter);
+
+
+			for (POINT i : result)
+				cout << i.x << " " << i.y << endl;
+		}
+		else if(readingdirection == 2)
+		{
+			tempiter = startiter;
+			for (; tempiter != origin.begin(); tempiter--)
+				result.push_back(*tempiter);
+
+			tempiter = origin.end();
+			tempiter--;
+			for (; tempiter != startiter; tempiter--)
+				result.push_back(*tempiter);
+
+			for (POINT i : result)
+				cout << i.x << " " << i.y << endl;
+		}
+	}
+}
 
 void PlayerCorrectOnLine(int x, int y, int BeforeX, int BeforeY, Drawer& player)
 {

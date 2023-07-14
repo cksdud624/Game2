@@ -178,11 +178,12 @@ static Line BorderLine[4];
 static vector<POINT> movepoints;
 
 static int linedirection = -1;//선을 그리는 방향
+static int startpointdirection = -1;//그리는 시작점에서의 방향
 
 static vector<POINT> ReturnLines;//스페이스바를 뗄 때 선 위에 있지 않으면 왔던 길을 되돌아와야됨
 
 
-static vector<vector<POINT>> Areas;//플레이어가 차지한 공간
+static list<list<POINT>> Areas;//플레이어가 차지한 공간
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -297,6 +298,18 @@ void Update()
     //스페이스바의 눌림에 따른 기능
     if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
     {
+        if (startpointdirection == -1 && movepoints.size() == 1)//출발점의 방향 설정
+        {
+            if (player.getX() - movepoints[0].x > 0)
+                startpointdirection = 1;
+            else if (player.getX() - movepoints[0].x < 0)
+                startpointdirection = 3;
+            else if (player.getY() - movepoints[0].y < 0)
+                startpointdirection = 2;
+            else if (player.getY() - movepoints[0].y > 0)
+                startpointdirection = 0;
+        }
+
         if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
         {
             player.setX(BeforeX);
@@ -325,35 +338,84 @@ void Update()
             movepoints.clear();
         }
 
-            BorderCheck(BorderLine, player, OnLines);//외곽선 충돌 체크
-            if (OnLines.size() >= 1)//땅 점령후 도형 생성
+        BorderCheck(BorderLine, player, OnLines);//외곽선 충돌 체크
+        if (OnLines.size() >= 1)//땅 점령후 도형 생성
+        {
+            movepoints.push_back({ player.getX(), player.getY() });
+            player.setDrawing(0);
+            if (movepoints.size() <= 2)
             {
-                movepoints.push_back({ player.getX(), player.getY() });
-                player.setDrawing(0);
-                if (movepoints.size() <= 2)
-                {
-                    player.setX(movepoints[0].x);
-                    player.setY(movepoints[0].y);
-                }
-                if (movepoints.size() > 2)
-                {
-                    player.setX(movepoints[movepoints.size() - 1].x);
-                    player.setY(movepoints[movepoints.size() - 1].y);
-                    vector<POINT> temp;
-                    for (int i = 0; i < movepoints.size(); i++)
-                    {
-                        temp.push_back(movepoints[i]);
-                    }
-                    Areas.push_back(temp);
-                    linedirection = -1;
-                }
-                movepoints.clear();
+                player.setX(movepoints[0].x);
+                player.setY(movepoints[0].y);
             }
+            if (movepoints.size() > 2)
+            {
+                int readingdirection;
+                player.setX(movepoints[movepoints.size() - 1].x);
+                player.setY(movepoints[movepoints.size() - 1].y);
+                list<POINT> templist;
+                list<POINT> redesignlist;
+                POINT turnpoint = { -1, -1 };
+                for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
+                    templist.push_back(movepoints[i]);
+
+                list<POINT>::iterator iter = templist.begin();
+
+                if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                    readingdirection = 1;
+                else
+                    readingdirection = 2;
+                if (!(startpointdirection == player.getDirection() + 2 ||
+                    startpointdirection == player.getDirection() - 2))//반대 방향으로 들어오지 않으면
+                {
+                    double incl = -((double)(player.getY() - movepoints[0].y)
+                        / (double)(player.getX() - movepoints[0].x));//시작점과 끝 점의 기울기
+                    int minx, maxx, miny, maxy;
+
+                    if (player.getX() > movepoints[0].x)
+                    {
+                        minx = movepoints[0].x;
+                        maxx = player.getX();
+                    }
+                    else
+                    {
+                        minx = player.getX();
+                        maxx = movepoints[0].x;
+                    }
+                    if (player.getY() > movepoints[0].y)
+                    {
+                        miny = movepoints[0].y;
+                        maxy = player.getY();
+                    }
+                    else
+                    {
+                        miny = player.getY();
+                        maxy = movepoints[0].y;
+                    }
+
+                    if (incl > 0 && startpointdirection <= 1 && startpointdirection >= 0)
+                        templist.push_back({ minx, miny });
+                    else if (incl > 0 && startpointdirection >= 2)
+                        templist.insert(iter, { maxx, maxy });
+                    else if (incl < 0 && (startpointdirection == 0 || startpointdirection == 3))
+                    {
+                        turnpoint = {maxx, miny};
+                    }
+                    else if (incl < 0 && (startpointdirection == 1 || startpointdirection == 2))
+                        templist.push_front({ minx, maxy });
+                }
+                startpointdirection = -1;
+
+                RedesignList(templist, redesignlist, turnpoint, readingdirection);
+                Areas.push_back(redesignlist);
+            }
+                movepoints.clear();
+        }
         OnLines.clear();
     }
     else//도형과 맵 테두리 이동
     {
-        if (player.getDrawing() == 1)//스페이스바를 떼면 원래 위치로 돌아옴
+        if (player.getDrawing() == 1)//스페이스바를 떼면 되돌아가야함
         {
             player.setDrawing(0);
             linedirection = -1;
@@ -408,17 +470,19 @@ void DrawDoubleBuffering(HDC& hdc)
     POINT playerpoint = { player.getX(), player.getY() };
 
 
-    for (int i = 0; i < Areas.size(); i++)//도형을 그림
+    for (list<POINT> x : Areas)//도형을 그림
     {
-        POINT* temp = new POINT[Areas[i].size() + 1];
+        POINT* temp = new POINT[x.size() + 1];
 
         HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
         HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
-        for (int j = 0; j < Areas[i].size(); j++)
+        int i = 0;
+        for (POINT j : x)
         {
-            temp[j] = Areas[i][j];
+            temp[i] = j;
+            i++;
         }
-        Polygon(mem1dc, temp, Areas[i].size());
+        Polygon(mem1dc, temp, x.size());
 
         SelectObject(mem1dc, oldBrush);
         DeleteObject(myBrush);
