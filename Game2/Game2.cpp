@@ -298,7 +298,11 @@ void Update()
     if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
     {
         if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
+        {
+            player.setX(BeforeX);
+            player.setY(BeforeY);
             return;
+        }
         OnlyOnWindow(MAPSIZE, player, rectView);
         if (player.getDrawing() == 0)
         {
