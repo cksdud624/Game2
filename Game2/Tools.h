@@ -16,6 +16,52 @@ void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
 void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection);
+void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines);
+
+void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<int>>& OnAreaLines)
+{
+	list<POINT>::iterator temp;
+	list<POINT>::iterator tempnext;
+	for (list<POINT> i : Areas)//도형의 선 위에 있는지 확인
+	{
+
+		vector<int> tempvec;
+		temp = i.begin();
+		tempnext = i.begin();
+		tempnext++;
+		int index = 0;
+
+		for (; tempnext != i.end(); tempnext++, temp++)
+		{
+			if ((*temp).x == (*tempnext).x)//y선
+			{
+				if (OnLineCheckY((*temp).x, (*temp).y, (*tempnext).y, player))
+						tempvec.push_back(index);
+			}
+			else if ((*temp).y == (*tempnext).y)//x선
+			{
+				if (OnLineCheckX((*temp).x, (*tempnext).x, (*temp).y, player))
+						tempvec.push_back(index);
+			}
+			index++;
+		}
+
+		if (tempnext == i.end())
+		{
+			if ((*temp).x == i.front().x)//y선
+			{
+				if (OnLineCheckY((*temp).x, (*temp).y, i.front().y, player))
+					tempvec.push_back(index);
+			}
+			else if ((*temp).y == i.front().y)//x선
+			{
+				if (OnLineCheckX((*temp).x, i.front().x, (*temp).y, player))
+					tempvec.push_back(index);
+			}
+		}
+		OnAreaLines.push_back(tempvec);
+	}
+}
 
 void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection)
 {
@@ -89,38 +135,38 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 	if (turnpoint.x != -1)//우측 위의 경우
 	{
 		turn = turnpoint;
+		origin.push_back(turn);
 	}
-	else
+
+	if (readingdirection == 1)
 	{
-		if (readingdirection == 1)
-		{
-			tempiter = startiter;
-			for (; tempiter != origin.end(); tempiter++)
-				result.push_back(*tempiter);
+		tempiter = startiter;
+		for (; tempiter != origin.end(); tempiter++)
+			result.push_back(*tempiter);
 
-			tempiter = originiter;
+		tempiter = originiter;
 
-			for (; tempiter != startiter; tempiter++)
-				result.push_back(*tempiter);
+		for (; tempiter != startiter; tempiter++)
+			result.push_back(*tempiter);
 
 
-			for (POINT i : result)
-				cout << i.x << " " << i.y << endl;
-		}
-		else if(readingdirection == 2)
-		{
-			tempiter = startiter;
-			for (; tempiter != origin.begin(); tempiter--)
-				result.push_back(*tempiter);
+		for (POINT i : result)
+			cout << i.x << " " << i.y << endl;
+	}
+	else if(readingdirection == 2)
+	{
+		tempiter = startiter;
+		for (; tempiter != origin.begin(); tempiter--)
+			result.push_back(*tempiter);
+		result.push_back(*tempiter);
 
-			tempiter = origin.end();
-			tempiter--;
-			for (; tempiter != startiter; tempiter--)
-				result.push_back(*tempiter);
+		tempiter = origin.end();
+		tempiter--;
+		for (; tempiter != startiter; tempiter--)
+			result.push_back(*tempiter);
 
-			for (POINT i : result)
-				cout << i.x << " " << i.y << endl;
-		}
+		for (POINT i : result)
+			cout << i.x << " " << i.y << endl;
 	}
 }
 

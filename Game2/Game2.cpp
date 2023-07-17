@@ -260,14 +260,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //메소드
 void Update()
 {
-    vector<int> OnLines;
-    vector<int> BeforeOnLines;
+    vector<int> OnLines;//외곽선 위에 있는 지
+    vector<int> BeforeOnLines;//직전 좌표가 외곽선 위에 있는 지
+    vector<vector<int>> OnAreaLines;//그려진 도형의 선 위에 있는 지
+    vector<vector<int>> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
 
     InvalidateRect(hWnd, NULL, FALSE);
     //연산 직전의 플레이어의 좌표
     int BeforeX = player.getX();
     int BeforeY = player.getY();
+    OnAreaLineCheck(Areas, player, BeforeOnAreaLines);
     BorderCheck(BorderLine, player, BeforeOnLines);
+
+    
 
 
     //이동
@@ -338,7 +343,9 @@ void Update()
             movepoints.clear();
         }
 
-        BorderCheck(BorderLine, player, OnLines);//외곽선 충돌 체크
+        BorderCheck(BorderLine, player, OnLines);//외곽선 위에 있는 지 확인
+
+
         if (OnLines.size() >= 1)//땅 점령후 도형 생성
         {
             movepoints.push_back({ player.getX(), player.getY() });
@@ -350,7 +357,7 @@ void Update()
             }
             if (movepoints.size() > 2)
             {
-                int readingdirection;
+                int readingdirection = 0;
                 player.setX(movepoints[movepoints.size() - 1].x);
                 player.setY(movepoints[movepoints.size() - 1].y);
                 list<POINT> templist;
@@ -360,11 +367,6 @@ void Update()
                     templist.push_back(movepoints[i]);
 
                 list<POINT>::iterator iter = templist.begin();
-
-                if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                    readingdirection = 1;
-                else
-                    readingdirection = 2;
                 if (!(startpointdirection == player.getDirection() + 2 ||
                     startpointdirection == player.getDirection() - 2))//반대 방향으로 들어오지 않으면
                 {
@@ -393,16 +395,70 @@ void Update()
                         maxy = movepoints[0].y;
                     }
 
-                    if (incl > 0 && startpointdirection <= 1 && startpointdirection >= 0)
+                    if (incl > 0 && startpointdirection <= 1 && startpointdirection >= 0)//점의 순서 결정
+                    {
                         templist.push_back({ minx, miny });
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 1;
+                        else
+                            readingdirection = 2;
+                    }
                     else if (incl > 0 && startpointdirection >= 2)
+                    {
                         templist.insert(iter, { maxx, maxy });
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 2;
+                        else
+                            readingdirection = 1;
+                    }
                     else if (incl < 0 && (startpointdirection == 0 || startpointdirection == 3))
                     {
                         turnpoint = {maxx, miny};
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 1;
+                        else
+                            readingdirection = 2;
                     }
                     else if (incl < 0 && (startpointdirection == 1 || startpointdirection == 2))
+                    {
                         templist.push_front({ minx, maxy });
+
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 2;
+                        else
+                            readingdirection = 1;
+                    }
+                }
+                else//점의 순서 결정
+                {
+                    if (player.getDirection() == 2)
+                    {
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 1;
+                        else
+                            readingdirection = 2;
+                    }
+                    else if (player.getDirection() == 0)
+                    {
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 2;
+                        else
+                            readingdirection = 1;
+                    }
+                    else if (player.getDirection() == 1)
+                    {
+                        if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                            readingdirection = 1;
+                        else
+                            readingdirection = 2;
+                    }
+                    else if (player.getDirection() == 3)
+                    {
+                        if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                            readingdirection = 2;
+                        else
+                            readingdirection = 1;
+                    }
                 }
                 startpointdirection = -1;
 
@@ -419,25 +475,33 @@ void Update()
         {
             player.setDrawing(0);
             linedirection = -1;
+
             for (int i = 0; i < movepoints.size(); i++)
-            {
                 ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
-            }
+
             player.setReturning(1);
             movepoints.clear();
         }
 
         if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
         {
+            OnAreaLineCheck(Areas, player, OnAreaLines);
             BorderCheck(BorderLine, player, OnLines);
+            int linecheck = 0;
+
+            for (int i = 0; i < OnAreaLines.size(); i++)
+            {
+                for (int j = 0; j < OnAreaLines[i].size(); j++)
+                {
+                    cout << OnAreaLines[i][j] << " ";
+                }
+            }
+            
             if (OnLines.size() < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
             {
                 for (int i = 0; i < BeforeOnLines.size(); i++)
-                {
                     CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
-                }
             }
-            OnLines.clear();
         }
         else//돌아가는 상태일 때
         {
