@@ -139,7 +139,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
-       600, 200, 800, 800, nullptr, nullptr, hInstance, nullptr);
+       600, 200, 804, 799, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -184,6 +184,8 @@ static vector<POINT> ReturnLines;//스페이스바를 뗄 때 선 위에 있지 
 
 
 static list<list<POINT>> Areas;//플레이어가 차지한 공간
+
+static int cannotdraw = 0;
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -265,39 +267,46 @@ void Update()
     vector<vector<int>> OnAreaLines;//그려진 도형의 선 위에 있는 지
     vector<vector<int>> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
 
+    list<list<POINT>>::iterator hititer1, hititer2;
+
+    int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
+    int beforeonarealinesize = 0;
+
     InvalidateRect(hWnd, NULL, FALSE);
     //연산 직전의 플레이어의 좌표
     int BeforeX = player.getX();
     int BeforeY = player.getY();
-    OnAreaLineCheck(Areas, player, BeforeOnAreaLines);
+    OnAreaLineCheck(Areas, player, BeforeOnAreaLines, beforeonarealinesize);
     BorderCheck(BorderLine, player, BeforeOnLines);
 
     
 
-
-    //이동
-    if (GetKeyState(VK_LEFT) < 0)
+    if (cannotdraw == 0)
     {
-        player.setX(player.getX() - player.getSpeed());
-        player.setDirection(3);
+        //이동
+        if (GetKeyState(VK_LEFT) < 0)
+        {
+            player.setX(player.getX() - player.getSpeed());
+            player.setDirection(3);
+        }
+        else if (GetKeyState(VK_RIGHT) < 0)
+        {
+            player.setX(player.getX() + player.getSpeed());
+            player.setDirection(1);
+        }
+        else if (GetKeyState(VK_DOWN) < 0)
+        {
+            player.setY(player.getY() + player.getSpeed());
+            player.setDirection(0);
+        }
+        else if (GetKeyState(VK_UP) < 0)
+        {
+            player.setY(player.getY() - player.getSpeed());
+            player.setDirection(2);
+        }
+        else
+            player.setDirection(-1);//방향이 존재하지 않는다
     }
-    else if (GetKeyState(VK_RIGHT) < 0)
-    {
-        player.setX(player.getX() + player.getSpeed());
-        player.setDirection(1);
-    }
-    else if (GetKeyState(VK_DOWN) < 0)
-    {
-        player.setY(player.getY() + player.getSpeed());
-        player.setDirection(0);
-    }
-    else if (GetKeyState(VK_UP) < 0)
-    {
-        player.setY(player.getY() - player.getSpeed());
-        player.setDirection(2);
-    }
-    else
-        player.setDirection(-1);//방향이 존재하지 않는다
 
 
     //스페이스바의 눌림에 따른 기능
@@ -327,27 +336,29 @@ void Update()
             movepoints.push_back({ BeforeX, BeforeY });
             linedirection = player.getDirection();
         }
-
+        player.setDrawing(1);
         if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
             || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
         {
             movepoints.push_back({ BeforeX, BeforeY });
             linedirection = player.getDirection();
         }
-        player.setDrawing(1);
 
         if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)//자신의 선에 충돌하는지 확인
         {
             player.setX(movepoints[0].x);
             player.setY(movepoints[0].y);
             movepoints.clear();
+            cannotdraw = 1;
+            return;
         }
 
         BorderCheck(BorderLine, player, OnLines);//외곽선 위에 있는 지 확인
+        OnAreaLineCheck(Areas, player, OnAreaLines, onarealinesize);
 
-
-        if (OnLines.size() >= 1)//땅 점령후 도형 생성
+        if (OnLines.size() >= 1 || onarealinesize >= 1)//땅 점령후 도형 생성
         {
+
             movepoints.push_back({ player.getX(), player.getY() });
             player.setDrawing(0);
             if (movepoints.size() <= 2)
@@ -463,41 +474,62 @@ void Update()
                 startpointdirection = -1;
 
                 RedesignList(templist, redesignlist, turnpoint, readingdirection);
+
+                cout << onarealinesize << endl;
+                if (onarealinesize >= 1)//충돌한 선이 외곽선이 아니라 도형일 경우
+                {
+                    for (POINT i : redesignlist)
+                        cout << i.x << " " << i.y << endl;
+                }
                 Areas.push_back(redesignlist);
             }
                 movepoints.clear();
         }
-        OnLines.clear();
     }
     else//도형과 맵 테두리 이동
     {
+        cannotdraw = 0;
         if (player.getDrawing() == 1)//스페이스바를 떼면 되돌아가야함
         {
-            player.setDrawing(0);
-            linedirection = -1;
+            if (movepoints.size() > 0)
+            {
+                player.setDrawing(0);
+                linedirection = -1;
 
-            for (int i = 0; i < movepoints.size(); i++)
-                ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
+                for (int i = 0; i < movepoints.size(); i++)
+                    ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
 
-            player.setReturning(1);
-            movepoints.clear();
+                player.setReturning(1);
+                movepoints.clear();
+            }
         }
 
         if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
         {
-            OnAreaLineCheck(Areas, player, OnAreaLines);
+            OnAreaLineCheck(Areas, player, OnAreaLines , onarealinesize);
             BorderCheck(BorderLine, player, OnLines);
             int linecheck = 0;
-
-            for (int i = 0; i < OnAreaLines.size(); i++)
-            {
-                for (int j = 0; j < OnAreaLines[i].size(); j++)
-                {
-                    cout << OnAreaLines[i][j] << " ";
-                }
-            }
             
-            if (OnLines.size() < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
+            if (beforeonarealinesize == 2 && onarealinesize == 1 && OnLines.size() == 1)
+            {
+                player.setX(BeforeX);
+                player.setY(BeforeY);
+            }
+
+            if (onarealinesize == 0 && OnLines.size() == 0 &&
+                beforeonarealinesize == 1)
+            {
+                player.setX(BeforeX);
+                player.setY(BeforeY);
+            }
+
+            if (beforeonarealinesize == 2 && onarealinesize == 0 && OnLines.size() == 0)
+            {
+                player.setX(BeforeX);
+                player.setY(BeforeY);
+            }
+
+            if (OnLines.size() < 1 && onarealinesize < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
             {
                 for (int i = 0; i < BeforeOnLines.size(); i++)
                     CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);

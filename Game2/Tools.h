@@ -16,9 +16,24 @@ void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
 void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection);
-void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines);
+void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines,int & onarealinesize);
 
-void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<int>>& OnAreaLines)
+void SumAreas(list<list<POINT>>& Areas, list<POINT> NewArea);
+
+void SumAreas(list<list<POINT>>& Areas, list<POINT> NewArea)
+{
+	list<list<POINT>>::iterator areaiter;
+	list<POINT>::iterator areapointiter;
+	for (areaiter = Areas.begin(); areaiter != Areas.end(); areaiter++)
+	{
+		for (areapointiter = (*areaiter).begin(); areapointiter != (*areaiter).end(); areapointiter++)
+		{
+		}
+	}
+}
+
+void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<int>>& OnAreaLines, int & onarealinesize
+)
 {
 	list<POINT>::iterator temp;
 	list<POINT>::iterator tempnext;
@@ -36,12 +51,18 @@ void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<in
 			if ((*temp).x == (*tempnext).x)//y識
 			{
 				if (OnLineCheckY((*temp).x, (*temp).y, (*tempnext).y, player))
-						tempvec.push_back(index);
+				{
+					tempvec.push_back(index);
+					onarealinesize += 1;
+				}
 			}
 			else if ((*temp).y == (*tempnext).y)//x識
 			{
 				if (OnLineCheckX((*temp).x, (*tempnext).x, (*temp).y, player))
-						tempvec.push_back(index);
+				{
+					tempvec.push_back(index);
+					onarealinesize += 1;
+				}
 			}
 			index++;
 		}
@@ -51,12 +72,18 @@ void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<in
 			if ((*temp).x == i.front().x)//y識
 			{
 				if (OnLineCheckY((*temp).x, (*temp).y, i.front().y, player))
+				{
 					tempvec.push_back(index);
+					onarealinesize += 1;
+				}
 			}
 			else if ((*temp).y == i.front().y)//x識
 			{
 				if (OnLineCheckX((*temp).x, i.front().x, (*temp).y, player))
+				{
 					tempvec.push_back(index);
+					onarealinesize += 1;
+				}
 			}
 		}
 		OnAreaLines.push_back(tempvec);
@@ -149,9 +176,6 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 		for (; tempiter != startiter; tempiter++)
 			result.push_back(*tempiter);
 
-
-		for (POINT i : result)
-			cout << i.x << " " << i.y << endl;
 	}
 	else if(readingdirection == 2)
 	{
@@ -165,8 +189,6 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 		for (; tempiter != startiter; tempiter--)
 			result.push_back(*tempiter);
 
-		for (POINT i : result)
-			cout << i.x << " " << i.y << endl;
 	}
 }
 
