@@ -267,7 +267,8 @@ void Update()
     vector<vector<int>> OnAreaLines;//그려진 도형의 선 위에 있는 지
     vector<vector<int>> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
 
-    list<list<POINT>>::iterator hititer1, hititer2;
+    static list<list<POINT>>::iterator hititer1, hititer2;
+    static int hititeratorcount = 0;
 
     int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
     int beforeonarealinesize = 0;
@@ -331,10 +332,12 @@ void Update()
             return;
         }
         OnlyOnWindow(MAPSIZE, player, rectView);
-        if (player.getDrawing() == 0)
+        if (player.getDrawing() == 0)//맨 처음 시작점
         {
+            hititeratorcount = 0;
             movepoints.push_back({ BeforeX, BeforeY });
             linedirection = player.getDirection();
+            OnArea(Areas, hititer1, hititer2, hititeratorcount, BeforeX, BeforeY);//출발한 좌표가 도형인지 확인
         }
         player.setDrawing(1);
         if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
@@ -360,6 +363,10 @@ void Update()
         {
 
             movepoints.push_back({ player.getX(), player.getY() });
+
+            OnArea(Areas, hititer1, hititer2, hititeratorcount, player.getX(), player.getY());//도착한 좌표가 다른 도형인지 확인
+            
+
             player.setDrawing(0);
             if (movepoints.size() <= 2)
             {
@@ -373,6 +380,7 @@ void Update()
                 player.setY(movepoints[movepoints.size() - 1].y);
                 list<POINT> templist;
                 list<POINT> redesignlist;
+                list<POINT> lastlist;
                 POINT turnpoint = { -1, -1 };
                 for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
                     templist.push_back(movepoints[i]);
@@ -473,17 +481,19 @@ void Update()
                 }
                 startpointdirection = -1;
 
-                RedesignList(templist, redesignlist, turnpoint, readingdirection);
 
-                cout << onarealinesize << endl;
-                if (onarealinesize >= 1)//충돌한 선이 외곽선이 아니라 도형일 경우
-                {
-                    for (POINT i : redesignlist)
-                        cout << i.x << " " << i.y << endl;
-                }
-                Areas.push_back(redesignlist);
+                POINT inclturn;
+                RedesignList(templist, redesignlist, turnpoint, readingdirection, inclturn);//리스트 재배열
+                if(hititeratorcount)
+                SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, inclturn);
+
+
+                if (hititeratorcount == 0)
+                    Areas.push_back(redesignlist);
+                cannotdraw = 1;
             }
                 movepoints.clear();
+                hititeratorcount = 0;
         }
     }
     else//도형과 맵 테두리 이동

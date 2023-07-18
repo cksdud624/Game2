@@ -15,20 +15,259 @@ void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
 void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
-void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection);
-void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines,int & onarealinesize);
+void RedesignList(list<POINT>& origin, list<POINT>& result, POINT turnpoint, int readingdirection, POINT& inclturn);
+void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines, int& onarealinesize);
+void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist
+	, POINT inclturn);
+void OnArea(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount
+	, int BeforeX, int BeforeY);
+void FindTurnPoint(list<POINT>& area, POINT& turnpoint);
+bool InclCompare(POINT start, POINT end, POINT check);
 
-void SumAreas(list<list<POINT>>& Areas, list<POINT> NewArea);
-
-void SumAreas(list<list<POINT>>& Areas, list<POINT> NewArea)
+bool InclCompare(POINT start, POINT end, POINT check)
 {
-	list<list<POINT>>::iterator areaiter;
-	list<POINT>::iterator areapointiter;
-	for (areaiter = Areas.begin(); areaiter != Areas.end(); areaiter++)
+	if ((start.x - end.x) != 0 && (start.x - check.x != 0))
 	{
-		for (areapointiter = (*areaiter).begin(); areapointiter != (*areaiter).end(); areapointiter++)
+		double basic = -((double)(start.y - end.y) / (double)(start.x - end.x));
+		double incl = -((double)(start.y - check.y) / (double)(start.x - check.x));
+
+		if (incl > basic)
+			return true;
+		else
+			return false;
+	}
+	return false;
+}
+
+void FindTurnPoint(list<POINT>& area, POINT& turnpoint)
+{
+	int max = (*area.begin()).x;
+	int min;
+	vector<POINT> maxpoints;
+	vector<int> maxindex;
+	for (POINT i : area)//x의 최댓값을 구한다
+	{
+		if (i.x > max)
+			max = i.x;
+	}
+	int temp = 0;
+	for (POINT i : area)//x값이 최대와 최소인 점을 저장
+	{
+		if (i.x == max)
 		{
+			maxpoints.push_back(i);
+			maxindex.push_back(temp);
 		}
+		temp++;
+	}
+	min = maxpoints[0].y;
+	temp = 0;
+	for (int i = 0; i < maxpoints.size(); i++)
+	{
+
+		if (maxpoints[i].y < min)
+		{
+			min = maxpoints[i].y;
+			temp = i;
+		}
+	}
+	list<POINT>::iterator areaiter = area.begin();
+
+	for (int i = 0; i < maxindex[temp]; i++)
+		areaiter++;
+
+	turnpoint = *areaiter;
+}
+
+void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2,
+	int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist, POINT inclturn)
+{
+	if (hititeratorcount == 0)
+		return;
+	else if (hititeratorcount == 1)//1개의 도형과 부딪쳤을 때 
+	{
+		POINT turn;
+		list<POINT>::iterator tempiter = redesignlist.begin();
+		list<POINT>::iterator temphititer = (*hititer1).begin();
+
+		int check = 0;
+		for (; tempiter != redesignlist.end(); tempiter++)//중복되는 좌표 제거
+		{
+			check = 0;
+			temphititer = (*hititer1).begin();
+			for (; temphititer != (*hititer1).end(); temphititer++)
+			{
+				if (((*tempiter).x == (*temphititer).x) &&
+					((*tempiter).y == (*temphititer).y))
+				{
+					(*hititer1).erase(temphititer);
+					redesignlist.erase(tempiter);
+					check = 1;
+					break;
+				}
+			}
+
+			if (check == 1)
+				tempiter = redesignlist.begin();
+		}
+		//turn : 원래 도형의 전환점 inclturn : 새로 생성된 도형의 전환점
+		//시작 도형의 원래 리스트 값을 저장
+		list<POINT> temp = *hititer1;
+		(*hititer1).clear();//리스트 초기화
+
+		tempiter = redesignlist.begin();//생성된 도형의 이터레이터
+		temphititer = temp.begin();//시작 도형의 이터레이터
+		double incl;
+		if ((*tempiter).x > (*temphititer).x)//원래 도형이 좌측 생성된 도형은 우측
+		{
+			list<POINT>::iterator nextiter = temp.begin();
+			nextiter++;
+
+			for (POINT i : temp)
+				cout << i.x << " " << i.y << endl;
+			cout << endl;
+
+			for (; temphititer != temp.end(); nextiter++, temphititer++)
+			{
+				if (nextiter == temp.end())
+					nextiter = temp.begin();
+
+				if ((*temphititer).x != (*nextiter).x && (*temphititer).y != (*nextiter).y)
+				{
+					(*hititer1).push_back(*temphititer);
+					nextiter++;
+					temphititer++;
+					break;
+				}
+
+				if ((*temphititer).x == (*nextiter).x)//y선
+				{
+					Drawer tempplayer;
+					tempplayer.setX((*tempiter).x);
+					tempplayer.setY((*tempiter).y);
+					if (OnLineCheckY((*temphititer).x, (*temphititer).y, (*nextiter).y, tempplayer) == true)
+					{
+						(*hititer1).push_back(*temphititer);
+						nextiter++;
+						temphititer++;
+						break;
+					}
+				}
+
+				(*hititer1).push_back(*temphititer);
+			}
+
+			for (; tempiter != redesignlist.end(); tempiter++)
+			{
+				(*hititer1).push_back(*tempiter);
+			}
+			for (; temphititer != temp.end(); temphititer++)
+			{
+				(*hititer1).push_back(*temphititer);
+			}
+
+			for (POINT i : *hititer1)
+				cout << i.x << " " << i.y << endl;
+		}
+	}
+}
+
+
+void OnArea(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount,
+	int BeforeX, int BeforeY)
+{
+	if (Areas.size() > 0)
+	{
+		list<list<POINT>>::iterator tempiter = Areas.begin();
+		list<POINT>::iterator tempareaiter;
+		list<POINT>::iterator tempnextareaiter;
+		int max, min;
+		Drawer beforeplayer;
+		beforeplayer.setX(BeforeX);
+		beforeplayer.setY(BeforeY);
+		for (; tempiter != Areas.end(); tempiter++)
+		{
+			tempareaiter = (*tempiter).begin();
+			tempnextareaiter = (*tempiter).begin();
+			tempnextareaiter++;
+			for (; tempnextareaiter != (*tempiter).end(); tempareaiter++, tempnextareaiter++)
+			{
+				if ((*tempareaiter).x == (*tempnextareaiter).x)//Y선
+				{
+					if (OnLineCheckY((*tempareaiter).x, (*tempareaiter).y, (*tempnextareaiter).y, beforeplayer))
+					{
+						if (hititeratorcount == 0)
+						{
+							hititer1 = tempiter;
+							hititeratorcount = 1;
+						}
+						else if (hititeratorcount == 1 && hititer1 != tempiter)
+						{
+							hititer2 = tempiter;
+							hititeratorcount = 2;
+						}
+						break;
+					}
+				}
+
+				else if ((*tempareaiter).y == (*tempnextareaiter).y)
+				{
+					if (OnLineCheckX((*tempareaiter).x, (*tempnextareaiter).x, (*tempareaiter).y, beforeplayer))
+					{
+						if (hititeratorcount == 0)
+						{
+							hititer1 = tempiter;
+							hititeratorcount = 1;
+						}
+						else if (hititeratorcount == 1 && hititer1 != tempiter)
+						{
+							hititer2 = tempiter;
+							hititeratorcount = 2;
+						}
+						break;
+					}
+				}
+			}
+			
+			if (tempnextareaiter == (*tempiter).end())
+			{
+				tempnextareaiter = (*tempiter).begin();
+				if ((*tempareaiter).x == (*tempnextareaiter).x)//Y선
+				{
+					if (OnLineCheckY((*tempareaiter).x, (*tempareaiter).y, (*tempnextareaiter).y, beforeplayer))
+					{
+						if (hititeratorcount == 0)
+						{
+							hititer1 = tempiter;
+							hititeratorcount = 1;
+						}
+						else if (hititeratorcount == 1 && hititer1 != tempiter)
+						{
+							hititer2 = tempiter;
+							hititeratorcount = 2;
+						}
+					}
+				}
+				else if ((*tempareaiter).y == (*tempnextareaiter).y)//x선
+				{
+					if (OnLineCheckX((*tempareaiter).x, (*tempnextareaiter).x, (*tempareaiter).y, beforeplayer))
+					{
+						if (hititeratorcount == 0)
+						{
+							hititer1 = tempiter;
+							hititeratorcount = 1;
+						}
+						else if (hititeratorcount == 1 && hititer1 != tempiter)
+						{
+							hititer2 = tempiter;
+							hititeratorcount = 2;
+						}
+					}
+				}
+			}
+			
+		}
+
 	}
 }
 
@@ -90,7 +329,7 @@ void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<in
 	}
 }
 
-void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection)
+void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection, POINT &inclturn)
 {
 	list<POINT>::iterator originiter = origin.begin();
 	list<POINT>::iterator startiter = origin.begin();
@@ -190,6 +429,7 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 			result.push_back(*tempiter);
 
 	}
+	inclturn = turn;
 }
 
 void PlayerCorrectOnLine(int x, int y, int BeforeX, int BeforeY, Drawer& player)
