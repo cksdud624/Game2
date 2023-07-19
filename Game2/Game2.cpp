@@ -387,7 +387,7 @@ void Update()
 
                 list<POINT>::iterator iter = templist.begin();
                 if (!(startpointdirection == player.getDirection() + 2 ||
-                    startpointdirection == player.getDirection() - 2))//반대 방향으로 들어오지 않으면
+                    startpointdirection == player.getDirection() - 2) && (startpointdirection != player.getDirection()))//반대 방향으로 들어오지 않으면
                 {
                     double incl = -((double)(player.getY() - movepoints[0].y)
                         / (double)(player.getX() - movepoints[0].x));//시작점과 끝 점의 기울기
@@ -450,33 +450,78 @@ void Update()
                 }
                 else//점의 순서 결정
                 {
-                    if (player.getDirection() == 2)
+                    if (player.getDirection() == 3)
                     {
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                        if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
+                        {
                             readingdirection = 1;
-                        else
-                            readingdirection = 2;
-                    }
-                    else if (player.getDirection() == 0)
-                    {
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                        }
+                        else if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
                             readingdirection = 2;
                         else
-                            readingdirection = 1;
+                        {
+                            if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            {
+                                readingdirection = 1;
+                            }
+                            else if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
+                                readingdirection = 2;
+                        }
                     }
+
                     else if (player.getDirection() == 1)
                     {
                         if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                        {
                             readingdirection = 1;
-                        else
+                        }
+                        else if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
                             readingdirection = 2;
+                        else
+                        {
+                            if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
+                            {
+                                readingdirection = 1;
+                            }
+                            else if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                                readingdirection = 2;
+                        }
                     }
-                    else if (player.getDirection() == 3)
+                    else if (player.getDirection() == 2)
                     {
-                        if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                        {
+                            readingdirection = 1;
+                        }
+                        else if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
                             readingdirection = 2;
                         else
+                        {
+                            if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
+                            {
+                                readingdirection = 1;
+                            }
+                            else if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                                readingdirection = 2;
+                        }
+                    }
+                    else if (player.getDirection() == 0)
+                    {
+                        if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
+                        {
                             readingdirection = 1;
+                        }
+                        else if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
+                            readingdirection = 2;
+                        else
+                        {
+                            if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
+                            {
+                                readingdirection = 1;
+                            }
+                            else if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
+                                readingdirection = 2;
+                        }
                     }
                 }
                 startpointdirection = -1;
@@ -484,8 +529,11 @@ void Update()
 
                 POINT inclturn;
                 RedesignList(templist, redesignlist, turnpoint, readingdirection, inclturn);//리스트 재배열
+                for (POINT i : redesignlist)
+                    cout << i.x << " " << i.y << endl;
+                cout << endl;
                 if(hititeratorcount)
-                SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, inclturn);
+                SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);
 
 
                 if (hititeratorcount == 0)

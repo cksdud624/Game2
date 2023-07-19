@@ -17,8 +17,8 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
 void RedesignList(list<POINT>& origin, list<POINT>& result, POINT turnpoint, int readingdirection, POINT& inclturn);
 void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines, int& onarealinesize);
-void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist
-	, POINT inclturn);
+void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount,
+	list<POINT> NewArea, list<POINT> redesignlist, POINT apoint, POINT bpoint);
 void OnArea(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount
 	, int BeforeX, int BeforeY);
 void FindTurnPoint(list<POINT>& area, POINT& turnpoint);
@@ -80,95 +80,279 @@ void FindTurnPoint(list<POINT>& area, POINT& turnpoint)
 }
 
 void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2,
-	int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist, POINT inclturn)
+	int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist, POINT apoint, POINT bpoint)
 {
 	if (hititeratorcount == 0)
 		return;
 	else if (hititeratorcount == 1)//1개의 도형과 부딪쳤을 때 
 	{
-		POINT turn;
-		list<POINT>::iterator tempiter = redesignlist.begin();
-		list<POINT>::iterator temphititer = (*hititer1).begin();
-
-		int check = 0;
-		for (; tempiter != redesignlist.end(); tempiter++)//중복되는 좌표 제거
-		{
-			check = 0;
-			temphititer = (*hititer1).begin();
-			for (; temphititer != (*hititer1).end(); temphititer++)
-			{
-				if (((*tempiter).x == (*temphititer).x) &&
-					((*tempiter).y == (*temphititer).y))
-				{
-					(*hititer1).erase(temphititer);
-					redesignlist.erase(tempiter);
-					check = 1;
-					break;
-				}
-			}
-
-			if (check == 1)
-				tempiter = redesignlist.begin();
-		}
-		//turn : 원래 도형의 전환점 inclturn : 새로 생성된 도형의 전환점
-		//시작 도형의 원래 리스트 값을 저장
 		list<POINT> temp = *hititer1;
-		(*hititer1).clear();//리스트 초기화
+		(*hititer1).clear();
 
-		tempiter = redesignlist.begin();//생성된 도형의 이터레이터
-		temphititer = temp.begin();//시작 도형의 이터레이터
-		double incl;
-		if ((*tempiter).x > (*temphititer).x)//원래 도형이 좌측 생성된 도형은 우측
+		list<POINT>::iterator checkiter = temp.begin();
+		list<POINT>::iterator nextiter = temp.begin();
+		list<POINT>::iterator recheckiter = redesignlist.begin();
+		nextiter++;
+		int endpointover = 0;//새로 생성된 도형의 끝점을 지났을 때
+		int startpointover = 0;
+		int startpointdup = 0;//시작점과 원래 도형의 꼭짓점이 겹칠 때
+		int endpointdup = 0;
+		Drawer startpoint, endpoint;
+		POINT start = { 0, 0 }, end = { 0, 0 };
+
+		vector<POINT> startNend;
+		vector<POINT> NLinePoint;
+
+		for (; checkiter != temp.end(); checkiter++, nextiter++)//시작점과 끝점 추출
 		{
-			list<POINT>::iterator nextiter = temp.begin();
-			nextiter++;
+			recheckiter = redesignlist.begin();
+			if (nextiter == temp.end())
+				nextiter = temp.begin();
 
-			for (POINT i : temp)
-				cout << i.x << " " << i.y << endl;
-			cout << endl;
-
-			for (; temphititer != temp.end(); nextiter++, temphititer++)
+			if ((*checkiter).x == (*nextiter).x)//y선
 			{
-				if (nextiter == temp.end())
-					nextiter = temp.begin();
-
-				if ((*temphititer).x != (*nextiter).x && (*temphititer).y != (*nextiter).y)
+				for (; recheckiter != redesignlist.end(); recheckiter++)
 				{
-					(*hititer1).push_back(*temphititer);
-					nextiter++;
-					temphititer++;
-					break;
-				}
-
-				if ((*temphititer).x == (*nextiter).x)//y선
-				{
-					Drawer tempplayer;
-					tempplayer.setX((*tempiter).x);
-					tempplayer.setY((*tempiter).y);
-					if (OnLineCheckY((*temphititer).x, (*temphititer).y, (*nextiter).y, tempplayer) == true)
+					startpoint.setX((*recheckiter).x);
+					startpoint.setY((*recheckiter).y);
+					if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == true)
 					{
-						(*hititer1).push_back(*temphititer);
-						nextiter++;
-						temphititer++;
-						break;
+						startNend.push_back(*recheckiter);
+						NLinePoint.push_back(*checkiter);
 					}
 				}
-
-				(*hititer1).push_back(*temphititer);
 			}
-
-			for (; tempiter != redesignlist.end(); tempiter++)
+			else if ((*checkiter).y == (*nextiter).y)
 			{
-				(*hititer1).push_back(*tempiter);
+				for (; recheckiter != redesignlist.end(); recheckiter++)
+				{
+					startpoint.setX((*recheckiter).x);
+					startpoint.setY((*recheckiter).y);
+					if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == true)
+					{
+						startNend.push_back(*recheckiter);
+						NLinePoint.push_back(*checkiter);
+					}
+				}
 			}
-			for (; temphititer != temp.end(); temphititer++)
-			{
-				(*hititer1).push_back(*temphititer);
-			}
-
-			for (POINT i : *hititer1)
-				cout << i.x << " " << i.y << endl;
 		}
+
+		for (int i = 0; i < startNend.size(); i++)
+		{
+			for (int j = i + 1; j < startNend.size(); j++)
+			{
+				if (startNend[i].x == startNend[j].x
+					&& startNend[i].y == startNend[j].y)
+				{
+					startNend.erase(startNend.begin() + j);
+					NLinePoint.erase(NLinePoint.begin() + j);
+					i = 0;
+					break;
+				}
+			}
+		}
+
+		cout << startNend.size() << endl << endl;
+		cout << endl;
+		cout << "startNend" << endl;
+		for (int i = 0; i < startNend.size(); i++)
+			cout << startNend[i].x << " " << startNend[i].y << endl;
+		if (startNend.size() > 1)
+		{
+			if (NLinePoint[0].x == NLinePoint[1].x
+				&& NLinePoint[0].y == NLinePoint[1].y)
+			{
+				if (startNend[0].x == startNend[1].x)//y선
+				{
+					if(abs(startNend[0].y - NLinePoint[0].y) < abs(startNend[1].y - NLinePoint[0].y))
+					{
+						start = startNend[0];
+						end = startNend[1];
+					}
+					else
+					{
+						start = startNend[1];
+						end = startNend[0];
+					}
+				}
+				else if (startNend[0].y == startNend[1].y)
+				{
+					if (abs(startNend[0].x - NLinePoint[0].x) < abs(startNend[1].x - NLinePoint[0].x))
+					{
+						start = startNend[0];
+						end = startNend[1];
+					}
+					else
+					{
+						start = startNend[1];
+						end = startNend[0];
+					}
+				}
+			}
+			else
+			{
+				start = startNend[0];
+				end = startNend[1];
+			}
+		}
+		else
+		{
+			start = startNend[0];
+			end = redesignlist.front();
+		}
+
+		startpoint.setX(start.x);
+		startpoint.setY(start.y);
+		endpoint.setX(end.x);
+		endpoint.setY(end.y);
+		cout << "start end" << endl;
+		cout << start.x << " " << start.y << endl;
+		cout << end.x << " " << end.y << endl;
+		checkiter = temp.begin();
+		nextiter = temp.begin();
+		recheckiter = redesignlist.begin();
+		nextiter++;
+
+		while (checkiter != temp.end())
+		{
+			if (nextiter == temp.end())
+			{
+				nextiter = temp.begin();
+			}
+
+			if ((*checkiter).y == (*nextiter).y)//x선
+			{
+				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == false)
+				{
+					(*hititer1).push_back(*checkiter);
+					nextiter++;
+					checkiter++;
+				}
+				else
+				{
+					(*hititer1).push_back(*checkiter);
+					if(start.x == (*nextiter).x && start.y == (*nextiter).y)
+					{
+						startpointdup = 1;
+					}
+					break;
+				}
+			}
+			else if ((*checkiter).x == (*nextiter).x)//y선
+			{
+				if(OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == false)
+				{
+					(*hititer1).push_back(*checkiter);
+					nextiter++;
+					checkiter++;
+				}
+				else
+				{
+					(*hititer1).push_back(*checkiter);
+					if (start.x == (*nextiter).x && start.y == (*nextiter).y)
+					{
+						startpointdup = 1;
+					}
+					break;
+				}
+			}
+		}
+
+		while ((*recheckiter).x != start.x || (*recheckiter).y != start.y)
+		{
+			recheckiter++;
+		}
+		list<POINT>::iterator tempiter = recheckiter;
+
+
+		if (startpointdup == 1)
+		{
+			recheckiter++;
+		}
+		//새로 생성된 도형의 값을 순서대로 전부 넣는다
+
+		for (; recheckiter != redesignlist.end(); recheckiter++)
+		{
+			if ((*recheckiter).x == (*nextiter).x && (*recheckiter).y == (*nextiter).y)
+			{
+				endpointdup = 1;
+			}
+			else
+			{
+				(*hititer1).push_back(*recheckiter);
+			}
+		}
+
+		recheckiter = redesignlist.begin();
+		for (; recheckiter != tempiter; recheckiter++)
+		{
+			if ((*recheckiter).x == (*nextiter).x && (*recheckiter).y == (*nextiter).y)
+			{
+				endpointdup = 1;
+			}
+			else
+			{
+				(*hititer1).push_back(*recheckiter);
+			}
+		}
+		while (checkiter != temp.end())
+		{
+			if (nextiter == temp.end())
+			{
+				nextiter = temp.begin();
+			}
+			if (endpointdup == 1)
+			{
+				endpointdup = 0;
+				nextiter++;
+				checkiter++;
+				endpointover = 1;
+				continue;
+			}
+			if ((*checkiter).y == (*nextiter).y)//x선
+			{
+				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, endpoint) == false)
+				{
+					if(endpointover == 1)
+						(*hititer1).push_back(*checkiter);
+					nextiter++;
+					checkiter++;
+				}
+				else
+				{
+					if (((*hititer1).back().x != end.x || (*hititer1).back().y != end.y) && endpointover == 0)
+					{
+						(*hititer1).pop_back();
+					}
+					nextiter++;
+					checkiter++;
+					endpointover = 1;
+				}
+			}
+			else if ((*checkiter).x == (*nextiter).x)//y선
+			{
+				if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, endpoint) == false)
+				{
+					if(endpointover == 1)
+						(*hititer1).push_back(*checkiter);
+					nextiter++;
+					checkiter++;
+				}
+				else
+				{
+					if (((*hititer1).back().x != end.x || (*hititer1).back().y != end.y) && endpointover == 0)
+					{
+						(*hititer1).pop_back();
+					}
+					nextiter++;
+					checkiter++;
+					endpointover = 1;
+				}
+			}
+		}
+		cout << "new" << endl;
+		for(POINT i : *hititer1)
+			cout << i.x << " " << i.y << endl;
 	}
 }
 
@@ -414,7 +598,6 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 
 		for (; tempiter != startiter; tempiter++)
 			result.push_back(*tempiter);
-
 	}
 	else if(readingdirection == 2)
 	{
