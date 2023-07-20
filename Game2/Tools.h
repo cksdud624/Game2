@@ -155,6 +155,8 @@ void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, l
 		cout << startNend.size() << endl << endl;
 		cout << endl;
 		cout << "startNend" << endl;
+		cout << startNend.size() << endl << endl;
+		cout << endl;
 		for (int i = 0; i < startNend.size(); i++)
 			cout << startNend[i].x << " " << startNend[i].y << endl;
 		if (startNend.size() > 1)
@@ -213,6 +215,9 @@ void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, l
 		recheckiter = redesignlist.begin();
 		nextiter++;
 
+		int startpointAxis = 0; //시작점이 위에 있는 선과 시작점과 그 다음의 선의 방향을 체크
+		int redesignpointAxis = 0; //새로 생긴 도형의 방향을 체크
+		//도형을 읽음
 		while (checkiter != temp.end())
 		{
 			if (nextiter == temp.end())
@@ -234,6 +239,11 @@ void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, l
 					if(start.x == (*nextiter).x && start.y == (*nextiter).y)
 					{
 						startpointdup = 1;
+						if ((*checkiter).x == (*nextiter).x)
+							startpointAxis = 2;
+						else if ((*checkiter).y == (*nextiter).y)
+							startpointAxis = 1;
+
 					}
 					break;
 				}
@@ -252,6 +262,11 @@ void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, l
 					if (start.x == (*nextiter).x && start.y == (*nextiter).y)
 					{
 						startpointdup = 1;
+						if ((*checkiter).x == (*nextiter).x)
+							startpointAxis = 2;
+						else if ((*checkiter).y == (*nextiter).y)
+							startpointAxis = 1;
+
 					}
 					break;
 				}
@@ -517,21 +532,16 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 {
 	list<POINT>::iterator originiter = origin.begin();
 	list<POINT>::iterator startiter = origin.begin();
-	list<POINT>::iterator tempiter;
-	list<POINT>::iterator turniter = origin.begin();
+	list<POINT>::iterator tempiter, nextiter;
 	vector<POINT> minpoints;//x값이 최소인 좌표들
-	vector<POINT> maxpoints;//x값이 최대인 좌표들
 	vector<int> minindex;
-	vector<int> maxindex;
-	POINT start, turn;
+	POINT start, turn = { 0, 0 };
 	int pointy;
 	int min = (*originiter).x, max = (*originiter).x;
-	for (POINT i : origin)//x의 최솟값, 최댓값을 구한다
+	for (POINT i : origin)//x의 최솟값을 구한다
 	{
 		if (i.x < min)
 			min = i.x;
-		if (i.x > max)
-			max = i.x;
 	}
 	int temp = 0;
 	for (POINT i : origin)//x값이 최대와 최소인 점을 저장
@@ -540,12 +550,6 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 		{
 			minpoints.push_back(i);
 			minindex.push_back(temp);
-		}
-
-		if (i.x == max)
-		{
-			maxpoints.push_back(i);
-			maxindex.push_back(temp);
 		}
 		temp++;
 	}
@@ -566,28 +570,25 @@ void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int
 		startiter++;
 	start = *startiter;//가장 왼쪽에서 아래의 점
 
-	min = maxpoints[0].y;
-
-	pointy = 0;
-	for (int i = 0; i < maxpoints.size(); i++)
-	{
-		if (maxpoints[i].y < min)
-		{
-			min = maxpoints[i].y;
-			pointy = i;
-		}
-	}
-
-	for (int i = 0; i < maxindex[pointy]; i++)
-		turniter++;
-	turn = *turniter;//가장 오른쪽에서 위쪽의 점
-
 	if (turnpoint.x != -1)//우측 위의 경우
 	{
 		turn = turnpoint;
 		origin.push_back(turn);
 	}
 
+	tempiter = startiter;//시작점
+	nextiter = startiter;//시작점 다음
+	nextiter++;
+	if (nextiter == origin.end())
+		nextiter = origin.begin();
+	if ((*tempiter).x == (*nextiter).x)//역방향
+	{
+		readingdirection = 2;
+	}
+	else if ((*tempiter).y == (*nextiter).y)//정방향
+	{
+		readingdirection = 1;
+	}
 	if (readingdirection == 1)
 	{
 		tempiter = startiter;

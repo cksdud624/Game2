@@ -344,7 +344,7 @@ void Update()
             || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
         {
             movepoints.push_back({ BeforeX, BeforeY });
-            linedirection = player.getDirection();
+            linedirection = player.getDirection();//시작 경우
         }
 
         if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)//자신의 선에 충돌하는지 확인
@@ -384,144 +384,14 @@ void Update()
                 POINT turnpoint = { -1, -1 };
                 for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
                     templist.push_back(movepoints[i]);
-
                 list<POINT>::iterator iter = templist.begin();
                 if (!(startpointdirection == player.getDirection() + 2 ||
                     startpointdirection == player.getDirection() - 2) && (startpointdirection != player.getDirection()))//반대 방향으로 들어오지 않으면
                 {
-                    double incl = -((double)(player.getY() - movepoints[0].y)
-                        / (double)(player.getX() - movepoints[0].x));//시작점과 끝 점의 기울기
-                    int minx, maxx, miny, maxy;
-
-                    if (player.getX() > movepoints[0].x)
+                    if (hititeratorcount == 0)
                     {
-                        minx = movepoints[0].x;
-                        maxx = player.getX();
-                    }
-                    else
-                    {
-                        minx = player.getX();
-                        maxx = movepoints[0].x;
-                    }
-                    if (player.getY() > movepoints[0].y)
-                    {
-                        miny = movepoints[0].y;
-                        maxy = player.getY();
-                    }
-                    else
-                    {
-                        miny = player.getY();
-                        maxy = movepoints[0].y;
-                    }
-
-                    if (incl > 0 && startpointdirection <= 1 && startpointdirection >= 0)//점의 순서 결정
-                    {
-                        templist.push_back({ minx, miny });
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            readingdirection = 1;
-                        else
-                            readingdirection = 2;
-                    }
-                    else if (incl > 0 && startpointdirection >= 2)
-                    {
-                        templist.insert(iter, { maxx, maxy });
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            readingdirection = 2;
-                        else
-                            readingdirection = 1;
-                    }
-                    else if (incl < 0 && (startpointdirection == 0 || startpointdirection == 3))
-                    {
-                        turnpoint = {maxx, miny};
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            readingdirection = 1;
-                        else
-                            readingdirection = 2;
-                    }
-                    else if (incl < 0 && (startpointdirection == 1 || startpointdirection == 2))
-                    {
-                        templist.push_front({ minx, maxy });
-
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            readingdirection = 2;
-                        else
-                            readingdirection = 1;
-                    }
-                }
-                else//점의 순서 결정
-                {
-                    if (player.getDirection() == 3)
-                    {
-                        if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
-                        {
-                            readingdirection = 1;
-                        }
-                        else if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
-                            readingdirection = 2;
-                        else
-                        {
-                            if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            {
-                                readingdirection = 1;
-                            }
-                            else if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
-                                readingdirection = 2;
-                        }
-                    }
-
-                    else if (player.getDirection() == 1)
-                    {
-                        if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
-                        {
-                            readingdirection = 1;
-                        }
-                        else if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
-                            readingdirection = 2;
-                        else
-                        {
-                            if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
-                            {
-                                readingdirection = 1;
-                            }
-                            else if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                                readingdirection = 2;
-                        }
-                    }
-                    else if (player.getDirection() == 2)
-                    {
-                        if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                        {
-                            readingdirection = 1;
-                        }
-                        else if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
-                            readingdirection = 2;
-                        else
-                        {
-                            if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
-                            {
-                                readingdirection = 1;
-                            }
-                            else if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
-                                readingdirection = 2;
-                        }
-                    }
-                    else if (player.getDirection() == 0)
-                    {
-                        if (movepoints[0].x > movepoints[movepoints.size() - 1].x)
-                        {
-                            readingdirection = 1;
-                        }
-                        else if (movepoints[0].x < movepoints[movepoints.size() - 1].x)
-                            readingdirection = 2;
-                        else
-                        {
-                            if (movepoints[0].y < movepoints[movepoints.size() - 1].y)
-                            {
-                                readingdirection = 1;
-                            }
-                            else if (movepoints[0].y > movepoints[movepoints.size() - 1].y)
-                                readingdirection = 2;
-                        }
+                        cout << "bordercheck" << endl;
+                        cout << OnLines[0] << endl;
                     }
                 }
                 startpointdirection = -1;
@@ -532,8 +402,8 @@ void Update()
                 for (POINT i : redesignlist)
                     cout << i.x << " " << i.y << endl;
                 cout << endl;
-                if(hititeratorcount)
-                SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);
+                if(hititeratorcount > 0)
+                    SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);
 
 
                 if (hititeratorcount == 0)
