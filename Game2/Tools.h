@@ -9,611 +9,380 @@ using namespace std;
 
 bool OnLineCheckX(int startx, int endx, int y, Drawer& player);
 bool OnLineCheckY(int x, int starty, int endy, Drawer& player);
-void BorderCheck(Line BorderLine[], Drawer& player, vector<int>& OnLines);
-void CorrectOverPosition(Line line, Drawer& player, int beforex, int beforey);
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
-void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines);
 bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int BeforeY);
 void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& player);
-void RedesignList(list<POINT>& origin, list<POINT>& result, POINT turnpoint, int readingdirection, POINT& inclturn);
-void OnAreaLineCheck(list<list<POINT>>& Areas, Drawer& player, vector<int>& OnAreaLines, int& onarealinesize);
-void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount,
-	list<POINT> NewArea, list<POINT> redesignlist, POINT apoint, POINT bpoint);
-void OnArea(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount
-	, int BeforeX, int BeforeY);
-void FindTurnPoint(list<POINT>& area, POINT& turnpoint);
-bool InclCompare(POINT start, POINT end, POINT check);
+void RedesignList(list<POINT>& Area, list<POINT>& origin, list<POINT>& result, POINT a, POINT b);
+void OnAreaLineCheck(list<POINT>& Area, Drawer& player, vector<int>& OnAreaLines);
+void SumAreas(list<POINT>& Area, list<POINT> redesignlist);
 
-bool InclCompare(POINT start, POINT end, POINT check)
+
+void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 {
-	if ((start.x - end.x) != 0 && (start.x - check.x != 0))
-	{
-		double basic = -((double)(start.y - end.y) / (double)(start.x - end.x));
-		double incl = -((double)(start.y - check.y) / (double)(start.x - check.x));
 
-		if (incl > basic)
-			return true;
-		else
-			return false;
+	list<POINT>::iterator checkiter = Area.begin();
+	list<POINT>::iterator nextiter = Area.begin();
+	nextiter++;
+	list<POINT>::iterator recheckiter = redesignlist.begin();
+
+	Drawer startpoint, endpoint;
+	POINT start = { 0, 0 }, end = { 0, 0 };
+
+	vector<POINT> startNend;
+	vector<POINT> startNendBeginPoint;
+
+
+	for (; checkiter != Area.end(); checkiter++, nextiter++)//시작점과 끝점 추출
+	{
+		recheckiter = redesignlist.begin();
+		if (nextiter == Area.end())
+			nextiter = Area.begin();
+
+		if ((*checkiter).x == (*nextiter).x)//y선
+		{
+			for (; recheckiter != redesignlist.end(); recheckiter++)
+			{
+				startpoint.setX((*recheckiter).x);
+				startpoint.setY((*recheckiter).y);
+				if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == true)
+				{
+					startNend.push_back(*recheckiter);
+					startNendBeginPoint.push_back(*checkiter);
+				}
+			}
+		}
+		else if ((*checkiter).y == (*nextiter).y)
+		{
+			for (; recheckiter != redesignlist.end(); recheckiter++)
+			{
+				startpoint.setX((*recheckiter).x);
+				startpoint.setY((*recheckiter).y);
+				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == true)
+				{
+					startNend.push_back(*recheckiter);
+					startNendBeginPoint.push_back(*checkiter);
+				}
+			}
+		}
 	}
-	return false;
-}
 
-void FindTurnPoint(list<POINT>& area, POINT& turnpoint)
-{
-	int max = (*area.begin()).x;
-	int min;
-	vector<POINT> maxpoints;
-	vector<int> maxindex;
-	for (POINT i : area)//x의 최댓값을 구한다
+
+	if (startNend[0].x == startNend[1].x)//y선
 	{
-		if (i.x > max)
-			max = i.x;
-	}
-	int temp = 0;
-	for (POINT i : area)//x값이 최대와 최소인 점을 저장
-	{
-		if (i.x == max)
-		{
-			maxpoints.push_back(i);
-			maxindex.push_back(temp);
-		}
-		temp++;
-	}
-	min = maxpoints[0].y;
-	temp = 0;
-	for (int i = 0; i < maxpoints.size(); i++)
-	{
+		int alen = abs(startNend[0].y - startNendBeginPoint[0].y);
+		int blen = abs(startNend[1].y - startNendBeginPoint[1].y);
 
-		if (maxpoints[i].y < min)
-		{
-			min = maxpoints[i].y;
-			temp = i;
-		}
-	}
-	list<POINT>::iterator areaiter = area.begin();
-
-	for (int i = 0; i < maxindex[temp]; i++)
-		areaiter++;
-
-	turnpoint = *areaiter;
-}
-
-void SumAreas(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2,
-	int& hititeratorcount, list<POINT> NewArea, list<POINT> redesignlist, POINT apoint, POINT bpoint)
-{
-	if (hititeratorcount == 0)
-		return;
-	else if (hititeratorcount == 1)//1개의 도형과 부딪쳤을 때 
-	{
-		list<POINT> temp = *hititer1;
-		(*hititer1).clear();
-
-		list<POINT>::iterator checkiter = temp.begin();
-		list<POINT>::iterator nextiter = temp.begin();
-		list<POINT>::iterator recheckiter = redesignlist.begin();
-		nextiter++;
-		int endpointover = 0;//새로 생성된 도형의 끝점을 지났을 때
-		int startpointover = 0;
-		int startpointdup = 0;//시작점과 원래 도형의 꼭짓점이 겹칠 때
-		int endpointdup = 0;
-		Drawer startpoint, endpoint;
-		POINT start = { 0, 0 }, end = { 0, 0 };
-
-		vector<POINT> startNend;
-		vector<POINT> NLinePoint;
-
-		for (; checkiter != temp.end(); checkiter++, nextiter++)//시작점과 끝점 추출
-		{
-			recheckiter = redesignlist.begin();
-			if (nextiter == temp.end())
-				nextiter = temp.begin();
-
-			if ((*checkiter).x == (*nextiter).x)//y선
-			{
-				for (; recheckiter != redesignlist.end(); recheckiter++)
-				{
-					startpoint.setX((*recheckiter).x);
-					startpoint.setY((*recheckiter).y);
-					if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == true)
-					{
-						startNend.push_back(*recheckiter);
-						NLinePoint.push_back(*checkiter);
-					}
-				}
-			}
-			else if ((*checkiter).y == (*nextiter).y)
-			{
-				for (; recheckiter != redesignlist.end(); recheckiter++)
-				{
-					startpoint.setX((*recheckiter).x);
-					startpoint.setY((*recheckiter).y);
-					if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == true)
-					{
-						startNend.push_back(*recheckiter);
-						NLinePoint.push_back(*checkiter);
-					}
-				}
-			}
-		}
-
-		for (int i = 0; i < startNend.size(); i++)
-		{
-			for (int j = i + 1; j < startNend.size(); j++)
-			{
-				if (startNend[i].x == startNend[j].x
-					&& startNend[i].y == startNend[j].y)
-				{
-					startNend.erase(startNend.begin() + j);
-					NLinePoint.erase(NLinePoint.begin() + j);
-					i = 0;
-					break;
-				}
-			}
-		}
-
-		cout << startNend.size() << endl << endl;
-		cout << endl;
-		cout << "startNend" << endl;
-		cout << startNend.size() << endl << endl;
-		cout << endl;
-		for (int i = 0; i < startNend.size(); i++)
-			cout << startNend[i].x << " " << startNend[i].y << endl;
-		if (startNend.size() > 1)
-		{
-			if (NLinePoint[0].x == NLinePoint[1].x
-				&& NLinePoint[0].y == NLinePoint[1].y)
-			{
-				if (startNend[0].x == startNend[1].x)//y선
-				{
-					if(abs(startNend[0].y - NLinePoint[0].y) < abs(startNend[1].y - NLinePoint[0].y))
-					{
-						start = startNend[0];
-						end = startNend[1];
-					}
-					else
-					{
-						start = startNend[1];
-						end = startNend[0];
-					}
-				}
-				else if (startNend[0].y == startNend[1].y)
-				{
-					if (abs(startNend[0].x - NLinePoint[0].x) < abs(startNend[1].x - NLinePoint[0].x))
-					{
-						start = startNend[0];
-						end = startNend[1];
-					}
-					else
-					{
-						start = startNend[1];
-						end = startNend[0];
-					}
-				}
-			}
-			else
-			{
-				start = startNend[0];
-				end = startNend[1];
-			}
-		}
-		else
+		if (alen < blen)
 		{
 			start = startNend[0];
-			end = redesignlist.front();
+			end = startNend[1];
+		}
+		else
+		{
+			start = startNend[1];
+			end = startNend[0];
+		}
+	}
+	else if (startNend[0].y == startNend[1].y)
+	{
+		int alen = abs(startNend[0].x - startNendBeginPoint[0].x);
+		int blen = abs(startNend[1].x - startNendBeginPoint[1].x);
+
+		if (alen < blen)
+		{
+			start = startNend[0];
+			end = startNend[1];
+		}
+		else
+		{
+			start = startNend[1];
+			end = startNend[0];
+		}
+	}
+	else
+	{
+		start = startNend[0];
+		end = startNend[1];
+	}
+
+
+	startpoint.setX(start.x);
+	startpoint.setY(start.y);
+	endpoint.setX(end.x);
+	endpoint.setY(end.y);
+	list<POINT> temp = Area;
+
+	checkiter = temp.begin();
+	nextiter = temp.begin();
+	nextiter++;
+	recheckiter = redesignlist.begin();
+
+	Area.clear();
+
+	int startpointLine = 0;
+	int endpointLine = 0;
+	//도형을 읽음
+
+	while ((*recheckiter).x != start.x || (*recheckiter).y != start.y)
+	{
+		recheckiter++;
+	}
+
+	list<POINT>::iterator nextrecheckiter = recheckiter;
+	nextrecheckiter++;
+
+
+
+	while (checkiter != temp.end())
+	{
+		if (nextiter == temp.end())
+		{
+			nextiter = temp.begin();
 		}
 
-		startpoint.setX(start.x);
-		startpoint.setY(start.y);
-		endpoint.setX(end.x);
-		endpoint.setY(end.y);
-		cout << "start end" << endl;
-		cout << start.x << " " << start.y << endl;
-		cout << end.x << " " << end.y << endl;
-		checkiter = temp.begin();
-		nextiter = temp.begin();
-		recheckiter = redesignlist.begin();
-		nextiter++;
-
-		int startpointAxis = 0; //시작점이 위에 있는 선과 시작점과 그 다음의 선의 방향을 체크
-		int redesignpointAxis = 0; //새로 생긴 도형의 방향을 체크
-		//도형을 읽음
-		while (checkiter != temp.end())
+		if ((*checkiter).y == (*nextiter).y)//x선
 		{
-			if (nextiter == temp.end())
+			if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == false)
 			{
-				nextiter = temp.begin();
-			}
-
-			if ((*checkiter).y == (*nextiter).y)//x선
-			{
-				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == false)
-				{
-					(*hititer1).push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-				}
-				else
-				{
-					(*hititer1).push_back(*checkiter);
-					if(start.x == (*nextiter).x && start.y == (*nextiter).y)
-					{
-						startpointdup = 1;
-						if ((*checkiter).x == (*nextiter).x)
-							startpointAxis = 2;
-						else if ((*checkiter).y == (*nextiter).y)
-							startpointAxis = 1;
-
-					}
-					break;
-				}
-			}
-			else if ((*checkiter).x == (*nextiter).x)//y선
-			{
-				if(OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == false)
-				{
-					(*hititer1).push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-				}
-				else
-				{
-					(*hititer1).push_back(*checkiter);
-					if (start.x == (*nextiter).x && start.y == (*nextiter).y)
-					{
-						startpointdup = 1;
-						if ((*checkiter).x == (*nextiter).x)
-							startpointAxis = 2;
-						else if ((*checkiter).y == (*nextiter).y)
-							startpointAxis = 1;
-
-					}
-					break;
-				}
-			}
-		}
-
-		while ((*recheckiter).x != start.x || (*recheckiter).y != start.y)
-		{
-			recheckiter++;
-		}
-		list<POINT>::iterator tempiter = recheckiter;
-
-
-		if (startpointdup == 1)
-		{
-			recheckiter++;
-		}
-		//새로 생성된 도형의 값을 순서대로 전부 넣는다
-
-		for (; recheckiter != redesignlist.end(); recheckiter++)
-		{
-			if ((*recheckiter).x == (*nextiter).x && (*recheckiter).y == (*nextiter).y)
-			{
-				endpointdup = 1;
-			}
-			else
-			{
-				(*hititer1).push_back(*recheckiter);
-			}
-		}
-
-		recheckiter = redesignlist.begin();
-		for (; recheckiter != tempiter; recheckiter++)
-		{
-			if ((*recheckiter).x == (*nextiter).x && (*recheckiter).y == (*nextiter).y)
-			{
-				endpointdup = 1;
-			}
-			else
-			{
-				(*hititer1).push_back(*recheckiter);
-			}
-		}
-		while (checkiter != temp.end())
-		{
-			if (nextiter == temp.end())
-			{
-				nextiter = temp.begin();
-			}
-			if (endpointdup == 1)
-			{
-				endpointdup = 0;
+				Area.push_back(*checkiter);
 				nextiter++;
 				checkiter++;
-				endpointover = 1;
-				continue;
 			}
-			if ((*checkiter).y == (*nextiter).y)//x선
+			else
 			{
-				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, endpoint) == false)
+				if ((*nextiter).x == startpoint.getX() &&
+					(*nextiter).y == startpoint.getY())
 				{
-					if(endpointover == 1)
-						(*hititer1).push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-				}
-				else
-				{
-					if (((*hititer1).back().x != end.x || (*hititer1).back().y != end.y) && endpointover == 0)
+					if ((*recheckiter).y == (*nextrecheckiter).y)
 					{
-						(*hititer1).pop_back();
+
 					}
+					Area.push_back(*checkiter);
 					nextiter++;
 					checkiter++;
-					endpointover = 1;
+					continue;
 				}
-			}
-			else if ((*checkiter).x == (*nextiter).x)//y선
-			{
-				if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, endpoint) == false)
-				{
-					if(endpointover == 1)
-						(*hititer1).push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-				}
-				else
-				{
-					if (((*hititer1).back().x != end.x || (*hititer1).back().y != end.y) && endpointover == 0)
-					{
-						(*hititer1).pop_back();
-					}
-					nextiter++;
-					checkiter++;
-					endpointover = 1;
-				}
+				Area.push_back(*checkiter);
+				startpointLine = 1;
+				break;
 			}
 		}
-		cout << "new" << endl;
-		for(POINT i : *hititer1)
-			cout << i.x << " " << i.y << endl;
-	}
-}
-
-
-void OnArea(list<list<POINT>>& Areas, list<list<POINT>>::iterator& hititer1, list<list<POINT>>::iterator& hititer2, int& hititeratorcount,
-	int BeforeX, int BeforeY)
-{
-	if (Areas.size() > 0)
-	{
-		list<list<POINT>>::iterator tempiter = Areas.begin();
-		list<POINT>::iterator tempareaiter;
-		list<POINT>::iterator tempnextareaiter;
-		int max, min;
-		Drawer beforeplayer;
-		beforeplayer.setX(BeforeX);
-		beforeplayer.setY(BeforeY);
-		for (; tempiter != Areas.end(); tempiter++)
+		else if ((*checkiter).x == (*nextiter).x)//y선
 		{
-			tempareaiter = (*tempiter).begin();
-			tempnextareaiter = (*tempiter).begin();
-			tempnextareaiter++;
-			for (; tempnextareaiter != (*tempiter).end(); tempareaiter++, tempnextareaiter++)
+			if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == false)
 			{
-				if ((*tempareaiter).x == (*tempnextareaiter).x)//Y선
-				{
-					if (OnLineCheckY((*tempareaiter).x, (*tempareaiter).y, (*tempnextareaiter).y, beforeplayer))
-					{
-						if (hititeratorcount == 0)
-						{
-							hititer1 = tempiter;
-							hititeratorcount = 1;
-						}
-						else if (hititeratorcount == 1 && hititer1 != tempiter)
-						{
-							hititer2 = tempiter;
-							hititeratorcount = 2;
-						}
-						break;
-					}
-				}
-
-				else if ((*tempareaiter).y == (*tempnextareaiter).y)
-				{
-					if (OnLineCheckX((*tempareaiter).x, (*tempnextareaiter).x, (*tempareaiter).y, beforeplayer))
-					{
-						if (hititeratorcount == 0)
-						{
-							hititer1 = tempiter;
-							hititeratorcount = 1;
-						}
-						else if (hititeratorcount == 1 && hititer1 != tempiter)
-						{
-							hititer2 = tempiter;
-							hititeratorcount = 2;
-						}
-						break;
-					}
-				}
+				Area.push_back(*checkiter);
+				nextiter++;
+				checkiter++;
 			}
-			
-			if (tempnextareaiter == (*tempiter).end())
+			else
 			{
-				tempnextareaiter = (*tempiter).begin();
-				if ((*tempareaiter).x == (*tempnextareaiter).x)//Y선
+				if ((*nextiter).x == startpoint.getX() &&
+					(*nextiter).y == startpoint.getY())
 				{
-					if (OnLineCheckY((*tempareaiter).x, (*tempareaiter).y, (*tempnextareaiter).y, beforeplayer))
-					{
-						if (hititeratorcount == 0)
-						{
-							hititer1 = tempiter;
-							hititeratorcount = 1;
-						}
-						else if (hititeratorcount == 1 && hititer1 != tempiter)
-						{
-							hititer2 = tempiter;
-							hititeratorcount = 2;
-						}
-					}
+					Area.push_back(*checkiter);
+					nextiter++;
+					checkiter++;
+					continue;
 				}
-				else if ((*tempareaiter).y == (*tempnextareaiter).y)//x선
-				{
-					if (OnLineCheckX((*tempareaiter).x, (*tempnextareaiter).x, (*tempareaiter).y, beforeplayer))
-					{
-						if (hititeratorcount == 0)
-						{
-							hititer1 = tempiter;
-							hititeratorcount = 1;
-						}
-						else if (hititeratorcount == 1 && hititer1 != tempiter)
-						{
-							hititer2 = tempiter;
-							hititeratorcount = 2;
-						}
-					}
-				}
+				startpointLine = 1;
+				break;
 			}
-			
 		}
-
 	}
+	list<POINT>::iterator tempiter = recheckiter;
+
+	if (startpointLine == 1)
+		recheckiter++;
+
+	//새로 생성된 도형의 값을 순서대로 전부 넣는다
+
+	for (; recheckiter != redesignlist.end(); recheckiter++)
+	{
+		Area.push_back(*recheckiter);
+	}
+
+	recheckiter = redesignlist.begin();
+	for (; recheckiter != tempiter; recheckiter++)
+	{
+		Area.push_back(*recheckiter);
+	}
+	while (checkiter != temp.end())
+	{
+		if (nextiter == temp.end())
+		{
+			nextiter = temp.begin();
+		}
+		if ((*checkiter).y == (*nextiter).y)//x선
+		{
+			if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, endpoint) == false)
+			{
+				if (endpointLine == 1)
+				{
+					if (!(endpoint.getX() == (*nextiter).x &&
+						endpoint.getY() == (*nextiter).y))
+						Area.push_back(*checkiter);
+				}
+				nextiter++;
+				checkiter++;
+			}
+			else
+			{
+				endpointLine = 1;
+				nextiter++;
+				checkiter++;
+			}
+		}
+		else if ((*checkiter).x == (*nextiter).x)//y선
+		{
+			if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, endpoint) == false)
+			{
+				if (endpointLine == 1)
+				{
+					if (!(endpoint.getX() == (*nextiter).x &&
+						endpoint.getY() == (*nextiter).y))
+						Area.push_back(*checkiter);
+				}
+				nextiter++;
+				checkiter++;
+			}
+			else
+			{
+				endpointLine = 1;
+				nextiter++;
+				checkiter++;
+			}
+		}
+	}
+	for(POINT i : redesignlist)
+		cout << i.x << " " << i.y << endl;
+	cout << endl;
+
+	for (POINT i : Area)
+		cout << i.x << " " << i.y << endl;
+	cout << endl;
 }
 
-void OnAreaLineCheck(list<list<POINT>> &Areas,  Drawer& player, vector<vector<int>>& OnAreaLines, int & onarealinesize
-)
+void OnAreaLineCheck(list<POINT> &Area,  Drawer& player, vector<int>& OnAreaLines)
 {
 	list<POINT>::iterator temp;
 	list<POINT>::iterator tempnext;
-	for (list<POINT> i : Areas)//도형의 선 위에 있는지 확인
+	temp = Area.begin();
+	tempnext = Area.begin();
+	tempnext++;
+	int index = 0;
+
+	for (; temp != Area.end(); tempnext++, temp++)
 	{
+		if (tempnext == Area.end())
+			tempnext = Area.begin();
 
-		vector<int> tempvec;
-		temp = i.begin();
-		tempnext = i.begin();
-		tempnext++;
-		int index = 0;
-
-		for (; tempnext != i.end(); tempnext++, temp++)
+		if ((*temp).x == (*tempnext).x)//y선
 		{
-			if ((*temp).x == (*tempnext).x)//y선
+			if (OnLineCheckY((*temp).x, (*temp).y, (*tempnext).y, player))
 			{
-				if (OnLineCheckY((*temp).x, (*temp).y, (*tempnext).y, player))
+				OnAreaLines.push_back(index);
+			}
+		}
+		else if ((*temp).y == (*tempnext).y)//x선
+		{
+			if (OnLineCheckX((*temp).x, (*tempnext).x, (*temp).y, player))
+			{
+				OnAreaLines.push_back(index);
+			}
+		}
+		index++;
+	}
+}
+
+void RedesignList(list<POINT> &Area, list<POINT> &origin, list<POINT> &result, POINT a, POINT b)
+{
+	list<POINT>::iterator tempiter, nextiter;
+	Drawer tempPoint;
+
+	vector<POINT> startNend;
+	startNend.push_back(a);
+	startNend.push_back(b);
+
+	vector<POINT> startindexPoint;
+	vector<int> startNendindex;
+
+
+	int readingdirection = 0;
+
+	int index;
+	for (int i = 0; i < startNend.size(); i++)
+	{
+		index = 0;
+		tempPoint.setX(startNend[i].x);
+		tempPoint.setY(startNend[i].y);
+
+		tempiter = Area.begin();
+		nextiter = Area.begin();
+		nextiter++;
+
+		for (; tempiter != Area.end(); tempiter++, nextiter++)
+		{
+			if (nextiter == Area.end())
+				nextiter = Area.begin();
+			if ((*tempiter).x == (*nextiter).x)//y선
+			{
+				if (OnLineCheckY((*tempiter).x, (*tempiter).y, (*nextiter).y, tempPoint) == true)
 				{
-					tempvec.push_back(index);
-					onarealinesize += 1;
+					startindexPoint.push_back(*tempiter);
+					startNendindex.push_back(index);
+					break;
 				}
 			}
-			else if ((*temp).y == (*tempnext).y)//x선
+			else if ((*tempiter).y == (*nextiter).y)
 			{
-				if (OnLineCheckX((*temp).x, (*tempnext).x, (*temp).y, player))
+				if(OnLineCheckX((*tempiter).x, (*nextiter).x, (*tempiter).y, tempPoint) == true)
 				{
-					tempvec.push_back(index);
-					onarealinesize += 1;
+					startindexPoint.push_back(*tempiter);
+					startNendindex.push_back(index);
+
+					break;
 				}
 			}
 			index++;
 		}
-
-		if (tempnext == i.end())
-		{
-			if ((*temp).x == i.front().x)//y선
-			{
-				if (OnLineCheckY((*temp).x, (*temp).y, i.front().y, player))
-				{
-					tempvec.push_back(index);
-					onarealinesize += 1;
-				}
-			}
-			else if ((*temp).y == i.front().y)//x선
-			{
-				if (OnLineCheckX((*temp).x, i.front().x, (*temp).y, player))
-				{
-					tempvec.push_back(index);
-					onarealinesize += 1;
-				}
-			}
-		}
-		OnAreaLines.push_back(tempvec);
-	}
-}
-
-void RedesignList(list<POINT> &origin, list<POINT> &result, POINT turnpoint, int readingdirection, POINT &inclturn)
-{
-	list<POINT>::iterator originiter = origin.begin();
-	list<POINT>::iterator startiter = origin.begin();
-	list<POINT>::iterator tempiter, nextiter;
-	vector<POINT> minpoints;//x값이 최소인 좌표들
-	vector<int> minindex;
-	POINT start, turn = { 0, 0 };
-	int pointy;
-	int min = (*originiter).x, max = (*originiter).x;
-	for (POINT i : origin)//x의 최솟값을 구한다
-	{
-		if (i.x < min)
-			min = i.x;
-	}
-	int temp = 0;
-	for (POINT i : origin)//x값이 최대와 최소인 점을 저장
-	{
-		if (i.x == min)
-		{
-			minpoints.push_back(i);
-			minindex.push_back(temp);
-		}
-		temp++;
 	}
 
-
-	max = minpoints[0].y;
-
-	pointy = 0;
-	for(int i = 0; i < minpoints.size(); i++)
-	{
-		if (minpoints[i].y > max)
-		{
-			max = minpoints[i].y;
-			pointy = i;
-		}
-	}
-	for (int i = 0; i < minindex[pointy]; i++)
-		startiter++;
-	start = *startiter;//가장 왼쪽에서 아래의 점
-
-	if (turnpoint.x != -1)//우측 위의 경우
-	{
-		turn = turnpoint;
-		origin.push_back(turn);
-	}
-
-	tempiter = startiter;//시작점
-	nextiter = startiter;//시작점 다음
-	nextiter++;
-	if (nextiter == origin.end())
-		nextiter = origin.begin();
-	if ((*tempiter).x == (*nextiter).x)//역방향
-	{
-		readingdirection = 2;
-	}
-	else if ((*tempiter).y == (*nextiter).y)//정방향
-	{
+	if (startNendindex[0] < startNendindex[1])
 		readingdirection = 1;
-	}
-	if (readingdirection == 1)
+	else if (startNendindex[0] > startNendindex[1])
+		readingdirection = 2;
+	else
 	{
-		tempiter = startiter;
-		for (; tempiter != origin.end(); tempiter++)
-			result.push_back(*tempiter);
+		int alen, blen;
+		if (startNend[0].x == startindexPoint[0].x)//y선
+		{
+			alen = abs(startNend[0].y - startindexPoint[0].y);
+			blen = abs(startNend[1].y - startindexPoint[1].y);
+		}
+		else
+		{
+			alen = abs(startNend[0].x - startindexPoint[0].x);
+			blen = abs(startNend[1].x - startindexPoint[1].x);
+		}
 
-		tempiter = originiter;
-
-		for (; tempiter != startiter; tempiter++)
-			result.push_back(*tempiter);
+		if (alen < blen)
+			readingdirection = 1;
+		else
+			readingdirection = 2;
 	}
-	else if(readingdirection == 2)
+	if(readingdirection == 1)//정방향
+		result = origin;
+	else if (readingdirection == 2)//역방향
 	{
-		tempiter = startiter;
-		for (; tempiter != origin.begin(); tempiter--)
-			result.push_back(*tempiter);
-		result.push_back(*tempiter);
-
 		tempiter = origin.end();
 		tempiter--;
-		for (; tempiter != startiter; tempiter--)
-			result.push_back(*tempiter);
-
+		for (; tempiter != origin.begin(); tempiter--)
+		{
+			result.push_back((*tempiter));
+		}
+		result.push_back((*tempiter));
 	}
-	inclturn = turn;
 }
 
 void PlayerCorrectOnLine(int x, int y, int BeforeX, int BeforeY, Drawer& player)
@@ -732,15 +501,6 @@ bool SelfLineCheck(vector<POINT> movepoints, Drawer& player, int BeforeX, int Be
 	return false;
 };
 
-void OnAreaCheck(POINT start, POINT end, Drawer& player, vector<int>& OnLines)
-{
-	int linedirection;
-	if (start.x == end.x)//x선
-		linedirection = 1;
-	else//y선
-		linedirection = 2;
-}
-
 
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT &rectView)
 {
@@ -754,88 +514,6 @@ void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT &rectView)
 		player.setY(rectView.top + MAPSIZE);
 	else if (player.getY() > rectView.bottom - MAPSIZE)
 		player.setY(rectView.bottom - MAPSIZE);
-}
-
-void CorrectOverPosition(Line line, Drawer& player, int beforex, int beforey)
-{
-	int min, max;
-	if (line.getDirection() == 1)
-	{
-		if (line.getStartX() < line.getEndX())
-		{
-			min = line.getStartX();
-			max = line.getEndX();
-		}
-		else
-		{
-			min = line.getEndX();
-			max = line.getStartX();
-		}
-
-		if (min > player.getX())
-		{
-			player.setX(min);
-			player.setY(beforey);
-		}
-		
-		else if (max < player.getX())
-		{
-			player.setX(max);
-			player.setY(beforey);
-		}
-
-		if (player.getY() != beforey)
-			player.setY(beforey);
-	}
-	else if (line.getDirection() == 2)
-	{
-		if (line.getStartY() < line.getEndY())
-		{
-			min = line.getStartY();
-			max = line.getEndY();
-		}
-		else
-		{
-			min = line.getEndY();
-			max = line.getStartY();
-		}
-
-		if (min > player.getY())
-		{
-			player.setY(min);
-			player.setX(beforex);
-		}
-
-		if (max < player.getY())
-		{
-			player.setY(max);
-			player.setX(beforex);
-		}
-
-		if (player.getX() != beforex)
-			player.setX(beforex);
-	}
-}
-
-void BorderCheck(Line BorderLine[], Drawer& player, vector<int>& OnLines)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		if (BorderLine[i].getDirection() == 1)//x선이면
-		{
-			if (OnLineCheckX(BorderLine[i].getStartX(), BorderLine[i].getEndX(), BorderLine[i].getStartY(), player))
-			{
-				OnLines.push_back(i);
-			}
-		}
-		if (BorderLine[i].getDirection() == 2)//y선이면
-		{
-			if (OnLineCheckY(BorderLine[i].getStartX(), BorderLine[i].getStartY(), BorderLine[i].getEndY(), player))
-			{
-				OnLines.push_back(i);
-			}
-		}
-	}
 }
 
 bool OnLineCheckX(int startx, int endx, int y, Drawer& player)//x방향 선 위에 있는지 확인

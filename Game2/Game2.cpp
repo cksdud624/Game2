@@ -173,8 +173,6 @@ RECT rectView; //화면 크기
 static HBITMAP hBit, oldBit; // 더블 버퍼링 비트맵
 static Drawer player;
 
-static Line BorderLine[4];
-
 static vector<POINT> movepoints;
 
 static int linedirection = -1;//선을 그리는 방향
@@ -183,9 +181,11 @@ static int startpointdirection = -1;//그리는 시작점에서의 방향
 static vector<POINT> ReturnLines;//스페이스바를 뗄 때 선 위에 있지 않으면 왔던 길을 되돌아와야됨
 
 
-static list<list<POINT>> Areas;//플레이어가 차지한 공간
+static list<POINT> Area;//플레이어가 차지한 공간
 
 static int cannotdraw = 0;
+
+static POINT vertex[4];
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -199,30 +199,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         player.setWidth(20);
         player.setHeight(20);
         player.setSpeed(8);
-
-        BorderLine[0].setDirection(1);//외곽선 하단
-        BorderLine[0].setStartX(rectView.left + MAPSIZE);
-        BorderLine[0].setStartY(rectView.bottom - MAPSIZE);
-        BorderLine[0].setEndX(rectView.right - MAPSIZE);
-        BorderLine[0].setEndY(rectView.bottom - MAPSIZE);
-
-        BorderLine[1].setDirection(2);//외곽선 우측
-        BorderLine[1].setStartX(rectView.right - MAPSIZE);
-        BorderLine[1].setStartY(rectView.bottom - MAPSIZE);
-        BorderLine[1].setEndX(rectView.right - MAPSIZE);
-        BorderLine[1].setEndY(rectView.top + MAPSIZE);
-
-        BorderLine[2].setDirection(1);//외곽선 상단
-        BorderLine[2].setStartX(rectView.left + MAPSIZE);
-        BorderLine[2].setStartY(rectView.top + MAPSIZE);
-        BorderLine[2].setEndX(rectView.right - MAPSIZE);
-        BorderLine[2].setEndY(rectView.top + MAPSIZE);
-
-        BorderLine[3].setDirection(2);//외곽선 좌측
-        BorderLine[3].setStartX(rectView.left + MAPSIZE);
-        BorderLine[3].setStartY(rectView.top + MAPSIZE);
-        BorderLine[3].setEndX(rectView.left + MAPSIZE);
-        BorderLine[3].setEndY(rectView.bottom - MAPSIZE);
+        Area.push_back({ rectView.left + MAPSIZE, rectView.bottom - MAPSIZE });
+        Area.push_back({ rectView.right - MAPSIZE, rectView.bottom - MAPSIZE });
+        Area.push_back({ rectView.right - MAPSIZE, rectView.top + MAPSIZE });
+        Area.push_back({ rectView.left + MAPSIZE, rectView.top + MAPSIZE });
         break;
     case WM_COMMAND:
         {
@@ -262,13 +242,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //메소드
 void Update()
 {
-    vector<int> OnLines;//외곽선 위에 있는 지
-    vector<int> BeforeOnLines;//직전 좌표가 외곽선 위에 있는 지
-    vector<vector<int>> OnAreaLines;//그려진 도형의 선 위에 있는 지
-    vector<vector<int>> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
-
-    static list<list<POINT>>::iterator hititer1, hititer2;
-    static int hititeratorcount = 0;
+    vector<int> OnAreaLines;//그려진 도형의 선 위에 있는 지
+    vector<int> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
 
     int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
     int beforeonarealinesize = 0;
@@ -277,8 +252,7 @@ void Update()
     //연산 직전의 플레이어의 좌표
     int BeforeX = player.getX();
     int BeforeY = player.getY();
-    OnAreaLineCheck(Areas, player, BeforeOnAreaLines, beforeonarealinesize);
-    BorderCheck(BorderLine, player, BeforeOnLines);
+    OnAreaLineCheck(Area, player, BeforeOnAreaLines);
 
     
 
@@ -334,10 +308,8 @@ void Update()
         OnlyOnWindow(MAPSIZE, player, rectView);
         if (player.getDrawing() == 0)//맨 처음 시작점
         {
-            hititeratorcount = 0;
             movepoints.push_back({ BeforeX, BeforeY });
             linedirection = player.getDirection();
-            OnArea(Areas, hititer1, hititer2, hititeratorcount, BeforeX, BeforeY);//출발한 좌표가 도형인지 확인
         }
         player.setDrawing(1);
         if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
@@ -355,20 +327,17 @@ void Update()
             cannotdraw = 1;
             return;
         }
+        OnAreaLineCheck(Area, player, OnAreaLines);
 
-        BorderCheck(BorderLine, player, OnLines);//외곽선 위에 있는 지 확인
-        OnAreaLineCheck(Areas, player, OnAreaLines, onarealinesize);
-
-        if (OnLines.size() >= 1 || onarealinesize >= 1)//땅 점령후 도형 생성
+        if (OnAreaLines.size() >= 1)//땅 점령후 도형 생성
         {
 
             movepoints.push_back({ player.getX(), player.getY() });
-
-            OnArea(Areas, hititer1, hititer2, hititeratorcount, player.getX(), player.getY());//도착한 좌표가 다른 도형인지 확인
             
 
             player.setDrawing(0);
-            if (movepoints.size() <= 2)
+
+            if (movepoints.size() < 2)
             {
                 player.setX(movepoints[0].x);
                 player.setY(movepoints[0].y);
@@ -381,37 +350,18 @@ void Update()
                 list<POINT> templist;
                 list<POINT> redesignlist;
                 list<POINT> lastlist;
-                POINT turnpoint = { -1, -1 };
                 for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
                     templist.push_back(movepoints[i]);
                 list<POINT>::iterator iter = templist.begin();
-                if (!(startpointdirection == player.getDirection() + 2 ||
-                    startpointdirection == player.getDirection() - 2) && (startpointdirection != player.getDirection()))//반대 방향으로 들어오지 않으면
-                {
-                    if (hititeratorcount == 0)
-                    {
-                        cout << "bordercheck" << endl;
-                        cout << OnLines[0] << endl;
-                    }
-                }
                 startpointdirection = -1;
 
+                RedesignList(Area, templist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);//리스트 재배열
 
-                POINT inclturn;
-                RedesignList(templist, redesignlist, turnpoint, readingdirection, inclturn);//리스트 재배열
-                for (POINT i : redesignlist)
-                    cout << i.x << " " << i.y << endl;
-                cout << endl;
-                if(hititeratorcount > 0)
-                    SumAreas(Areas, hititer1, hititer2, hititeratorcount, lastlist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);
+                SumAreas(Area, redesignlist);
 
-
-                if (hititeratorcount == 0)
-                    Areas.push_back(redesignlist);
                 cannotdraw = 1;
             }
                 movepoints.clear();
-                hititeratorcount = 0;
         }
     }
     else//도형과 맵 테두리 이동
@@ -434,33 +384,13 @@ void Update()
 
         if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
         {
-            OnAreaLineCheck(Areas, player, OnAreaLines , onarealinesize);
-            BorderCheck(BorderLine, player, OnLines);
+            OnAreaLineCheck(Area, player, OnAreaLines);
             int linecheck = 0;
-            
-            if (beforeonarealinesize == 2 && onarealinesize == 1 && OnLines.size() == 1)
+           
+            if (OnAreaLines.size() < 1)
             {
                 player.setX(BeforeX);
                 player.setY(BeforeY);
-            }
-
-            if (onarealinesize == 0 && OnLines.size() == 0 &&
-                beforeonarealinesize == 1)
-            {
-                player.setX(BeforeX);
-                player.setY(BeforeY);
-            }
-
-            if (beforeonarealinesize == 2 && onarealinesize == 0 && OnLines.size() == 0)
-            {
-                player.setX(BeforeX);
-                player.setY(BeforeY);
-            }
-
-            if (OnLines.size() < 1 && onarealinesize < 1)//외곽선의 범위를 넘어서면 안쪽 위치로 보정
-            {
-                for (int i = 0; i < BeforeOnLines.size(); i++)
-                    CorrectOverPosition(BorderLine[BeforeOnLines[i]], player, BeforeX, BeforeY);
             }
         }
         else//돌아가는 상태일 때
@@ -488,31 +418,21 @@ void DrawDoubleBuffering(HDC& hdc)
     oldBit = (HBITMAP)SelectObject(mem1dc, hBit);
     FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
 
-    Rectangle(mem1dc, rectView.left + MAPSIZE, rectView.top + MAPSIZE,
-        rectView.right - MAPSIZE, rectView.bottom - MAPSIZE);
-
     POINT playerpoint = { player.getX(), player.getY() };
 
 
-    for (list<POINT> x : Areas)//도형을 그림
+    POINT* temp = new POINT[Area.size() + 1];
+    HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
+    HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
+    int i = 0;
+    for (POINT x : Area)//도형을 그림
     {
-        POINT* temp = new POINT[x.size() + 1];
-
-        HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
-        HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
-        int i = 0;
-        for (POINT j : x)
-        {
-            temp[i] = j;
-            i++;
-        }
-        Polygon(mem1dc, temp, x.size());
-
-        SelectObject(mem1dc, oldBrush);
-        DeleteObject(myBrush);
-
-        delete[] temp;
+        temp[i++] = x;
     }
+    Polygon(mem1dc, temp, Area.size());
+    SelectObject(mem1dc, oldBrush);
+    DeleteObject(myBrush);
+    delete[] temp;
 
 
     for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
