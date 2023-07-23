@@ -248,6 +248,8 @@ void Update()
     int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
     int beforeonarealinesize = 0;
 
+    int divecheck = 0;
+
     InvalidateRect(hWnd, NULL, FALSE);
     //연산 직전의 플레이어의 좌표
     int BeforeX = player.getX();
@@ -327,7 +329,12 @@ void Update()
             cannotdraw = 1;
             return;
         }
+
+
         OnAreaLineCheck(Area, player, OnAreaLines);
+
+
+
 
         if (OnAreaLines.size() >= 1)//땅 점령후 도형 생성
         {
@@ -342,7 +349,8 @@ void Update()
                 player.setX(movepoints[0].x);
                 player.setY(movepoints[0].y);
             }
-            if (movepoints.size() > 2)
+            if (movepoints.size() >= 2 && (movepoints[0].x != movepoints[movepoints.size() - 1].x || movepoints[0].y != movepoints[movepoints.size() - 1].y)
+                && BeforeOnAreaLines.size() == 0)
             {
                 int readingdirection = 0;
                 player.setX(movepoints[movepoints.size() - 1].x);

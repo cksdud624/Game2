@@ -15,11 +15,28 @@ void PlayerCorrectOnLine(int startx, int starty, int endx, int endy, Drawer& pla
 void RedesignList(list<POINT>& Area, list<POINT>& origin, list<POINT>& result, POINT a, POINT b);
 void OnAreaLineCheck(list<POINT>& Area, Drawer& player, vector<int>& OnAreaLines);
 void SumAreas(list<POINT>& Area, list<POINT> redesignlist);
+int GetArea(list<POINT>& Area);
 
-
-void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
+int GetArea(list<POINT>& Area)//신발끈 공식
 {
+	list<POINT>::iterator tempiter = Area.begin();
+	list<POINT>::iterator nextiter = Area.begin();
+	nextiter++;
+	int a = 0, b = 0;
 
+	for (; tempiter != Area.end(); nextiter++, tempiter++)
+	{
+		if (nextiter == Area.end())
+			nextiter = Area.begin();
+		a += (*tempiter).x * (*nextiter).y;
+		b += (*tempiter).y * (*nextiter).x;
+	}
+	return abs(a - b) / 2;
+}
+
+
+void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생성
+{
 	list<POINT>::iterator checkiter = Area.begin();
 	list<POINT>::iterator nextiter = Area.begin();
 	nextiter++;
@@ -28,83 +45,8 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 	Drawer startpoint, endpoint;
 	POINT start = { 0, 0 }, end = { 0, 0 };
 
-	vector<POINT> startNend;
-	vector<POINT> startNendBeginPoint;
-
-
-	for (; checkiter != Area.end(); checkiter++, nextiter++)//시작점과 끝점 추출
-	{
-		recheckiter = redesignlist.begin();
-		if (nextiter == Area.end())
-			nextiter = Area.begin();
-
-		if ((*checkiter).x == (*nextiter).x)//y선
-		{
-			for (; recheckiter != redesignlist.end(); recheckiter++)
-			{
-				startpoint.setX((*recheckiter).x);
-				startpoint.setY((*recheckiter).y);
-				if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, startpoint) == true)
-				{
-					startNend.push_back(*recheckiter);
-					startNendBeginPoint.push_back(*checkiter);
-				}
-			}
-		}
-		else if ((*checkiter).y == (*nextiter).y)
-		{
-			for (; recheckiter != redesignlist.end(); recheckiter++)
-			{
-				startpoint.setX((*recheckiter).x);
-				startpoint.setY((*recheckiter).y);
-				if (OnLineCheckX((*checkiter).x, (*nextiter).x, (*checkiter).y, startpoint) == true)
-				{
-					startNend.push_back(*recheckiter);
-					startNendBeginPoint.push_back(*checkiter);
-				}
-			}
-		}
-	}
-
-
-	if (startNend[0].x == startNend[1].x)//y선
-	{
-		int alen = abs(startNend[0].y - startNendBeginPoint[0].y);
-		int blen = abs(startNend[1].y - startNendBeginPoint[1].y);
-
-		if (alen < blen)
-		{
-			start = startNend[0];
-			end = startNend[1];
-		}
-		else
-		{
-			start = startNend[1];
-			end = startNend[0];
-		}
-	}
-	else if (startNend[0].y == startNend[1].y)
-	{
-		int alen = abs(startNend[0].x - startNendBeginPoint[0].x);
-		int blen = abs(startNend[1].x - startNendBeginPoint[1].x);
-
-		if (alen < blen)
-		{
-			start = startNend[0];
-			end = startNend[1];
-		}
-		else
-		{
-			start = startNend[1];
-			end = startNend[0];
-		}
-	}
-	else
-	{
-		start = startNend[0];
-		end = startNend[1];
-	}
-
+	start = redesignlist.front();
+	end = redesignlist.back();
 
 	startpoint.setX(start.x);
 	startpoint.setY(start.y);
@@ -116,20 +58,14 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 	nextiter = temp.begin();
 	nextiter++;
 	recheckiter = redesignlist.begin();
+	list<POINT>::iterator nextrecheckiter = recheckiter;
+	nextrecheckiter++;
 
 	Area.clear();
 
 	int startpointLine = 0;
 	int endpointLine = 0;
 	//도형을 읽음
-
-	while ((*recheckiter).x != start.x || (*recheckiter).y != start.y)
-	{
-		recheckiter++;
-	}
-
-	list<POINT>::iterator nextrecheckiter = recheckiter;
-	nextrecheckiter++;
 
 
 
@@ -150,21 +86,27 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 			}
 			else
 			{
-				if ((*nextiter).x == startpoint.getX() &&
-					(*nextiter).y == startpoint.getY())
+				if ((*checkiter).x == start.x && (*checkiter).y == start.y)
 				{
-					if ((*recheckiter).y == (*nextrecheckiter).y)
+					if ((*nextiter).y != (*nextrecheckiter).y)
 					{
-
+						startpointLine = 1;
+						break;
 					}
-					Area.push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-					continue;
+					else
+						break;
 				}
-				Area.push_back(*checkiter);
-				startpointLine = 1;
-				break;
+				else
+				{
+					Area.push_back(*checkiter);
+					if ((*nextiter).x == start.x && (*nextiter).y == start.y)
+					{
+						nextiter++;
+						checkiter++;
+						continue;
+					}
+					break;
+				}
 			}
 		}
 		else if ((*checkiter).x == (*nextiter).x)//y선
@@ -177,25 +119,37 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 			}
 			else
 			{
-				if ((*nextiter).x == startpoint.getX() &&
-					(*nextiter).y == startpoint.getY())
+				if ((*checkiter).x == start.x && (*checkiter).y == start.y)
+				{
+					if ((*nextiter).x != (*nextrecheckiter).x)
+					{
+						startpointLine = 1;
+						break;
+					}
+					else
+						break;
+				}
+				else
 				{
 					Area.push_back(*checkiter);
-					nextiter++;
-					checkiter++;
-					continue;
+					if ((*nextiter).x == start.x && (*nextiter).y == start.y)
+					{
+						nextiter++;
+						checkiter++;
+						continue;
+					}
+					break;
 				}
-				startpointLine = 1;
-				break;
 			}
 		}
 	}
 	list<POINT>::iterator tempiter = recheckiter;
 
-	if (startpointLine == 1)
-		recheckiter++;
-
 	//새로 생성된 도형의 값을 순서대로 전부 넣는다
+	if (startpointLine == 1)
+	{
+		recheckiter++;
+	}
 
 	for (; recheckiter != redesignlist.end(); recheckiter++)
 	{
@@ -207,6 +161,17 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 	{
 		Area.push_back(*recheckiter);
 	}
+
+	for (int i = 0; i < 2; i++)
+	{
+		if (recheckiter == redesignlist.begin())
+		{
+			recheckiter = redesignlist.end();
+		}
+		recheckiter--;
+	}
+
+
 	while (checkiter != temp.end())
 	{
 		if (nextiter == temp.end())
@@ -219,18 +184,27 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 			{
 				if (endpointLine == 1)
 				{
-					if (!(endpoint.getX() == (*nextiter).x &&
-						endpoint.getY() == (*nextiter).y))
-						Area.push_back(*checkiter);
+					Area.push_back(*checkiter);
 				}
-				nextiter++;
-				checkiter++;
 			}
 			else
 			{
+				if ((*checkiter).x == end.x && (*checkiter).y == end.y)
+				{
+					if ((*recheckiter).y != (*nextiter).y)
+						Area.push_back(*checkiter);
+				}
+				else
+				{
+					if ((*nextiter).x == end.x && (*nextiter).y == end.y)
+					{
+						Area.pop_back();
+						nextiter++;
+						checkiter++;
+						continue;
+					}
+				}
 				endpointLine = 1;
-				nextiter++;
-				checkiter++;
 			}
 		}
 		else if ((*checkiter).x == (*nextiter).x)//y선
@@ -239,25 +213,38 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)
 			{
 				if (endpointLine == 1)
 				{
-					if (!(endpoint.getX() == (*nextiter).x &&
-						endpoint.getY() == (*nextiter).y))
-						Area.push_back(*checkiter);
+					Area.push_back(*checkiter);
 				}
-				nextiter++;
-				checkiter++;
 			}
 			else
 			{
+				if ((*checkiter).x == end.x && (*checkiter).y == end.y)
+				{
+					if ((*recheckiter).x != (*nextiter).x)
+						Area.push_back(*checkiter);
+				}
+				else
+				{
+					if ((*nextiter).x == end.x && (*nextiter).y == end.y)
+					{
+						Area.pop_back();
+						nextiter++;
+						checkiter++;
+						continue;
+					}
+				}
 				endpointLine = 1;
-				nextiter++;
-				checkiter++;
 			}
 		}
+		nextiter++;
+		checkiter++;
 	}
+
+	cout << "redesignlist" << endl;
 	for(POINT i : redesignlist)
 		cout << i.x << " " << i.y << endl;
 	cout << endl;
-
+	cout << "NewArea" << endl;
 	for (POINT i : Area)
 		cout << i.x << " " << i.y << endl;
 	cout << endl;
