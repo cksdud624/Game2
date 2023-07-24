@@ -7,6 +7,9 @@
 
 using namespace std;
 
+int Randomize(int min, int max);
+
+
 bool OnLineCheckX(int startx, int endx, int y, Drawer& player);
 bool OnLineCheckY(int x, int starty, int endy, Drawer& player);
 void OnlyOnWindow(int MAPSIZE, Drawer& player, RECT& rectView);
@@ -37,6 +40,8 @@ int GetArea(list<POINT>& Area)//신발끈 공식
 
 void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생성
 {
+	list<POINT> rArea;//생성될 도형과 반대부분
+
 	list<POINT>::iterator checkiter = Area.begin();
 	list<POINT>::iterator nextiter = Area.begin();
 	nextiter++;
@@ -65,6 +70,7 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 
 	int startpointLine = 0;
 	int endpointLine = 0;
+	int onstartpointLine = 0;
 	//도형을 읽음
 
 
@@ -105,6 +111,7 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 						checkiter++;
 						continue;
 					}
+					onstartpointLine = 1;
 					break;
 				}
 			}
@@ -138,6 +145,7 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 						checkiter++;
 						continue;
 					}
+					onstartpointLine = 1;
 					break;
 				}
 			}
@@ -171,6 +179,20 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 		recheckiter--;
 	}
 
+	list<POINT>::iterator rAreaiter = redesignlist.end();
+	rAreaiter--;
+
+	for (; rAreaiter != redesignlist.end(); rAreaiter--)
+	{
+		rArea.push_back(*rAreaiter);
+		if (rAreaiter == redesignlist.begin())
+		{
+			break;
+		}
+	}
+
+
+
 
 	while (checkiter != temp.end())
 	{
@@ -186,6 +208,9 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 				{
 					Area.push_back(*checkiter);
 				}
+
+				if (onstartpointLine == 0 && endpointLine == 0)
+					rArea.push_back(*checkiter);
 			}
 			else
 			{
@@ -205,6 +230,8 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 					}
 				}
 				endpointLine = 1;
+				if(rArea.front().y != rArea.back().y)
+					rArea.push_back(*checkiter);
 			}
 		}
 		else if ((*checkiter).x == (*nextiter).x)//y선
@@ -212,9 +239,10 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 			if (OnLineCheckY((*checkiter).x, (*checkiter).y, (*nextiter).y, endpoint) == false)
 			{
 				if (endpointLine == 1)
-				{
 					Area.push_back(*checkiter);
-				}
+
+				if (onstartpointLine == 0 && endpointLine == 0)
+					rArea.push_back(*checkiter);
 			}
 			else
 			{
@@ -234,16 +262,31 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 					}
 				}
 				endpointLine = 1;
+				if (rArea.front().x != rArea.back().x)
+					rArea.push_back(*checkiter);
 			}
 		}
 		nextiter++;
 		checkiter++;
+
+		if (onstartpointLine == 1)
+			onstartpointLine = 0;
 	}
+
 
 	cout << "redesignlist" << endl;
 	for(POINT i : redesignlist)
 		cout << i.x << " " << i.y << endl;
 	cout << endl;
+
+	cout << "rArea" << endl;
+	for (POINT i : rArea)
+		cout << i.x << " " << i.y << endl;
+	cout << endl;
+
+	if (GetArea(Area) < GetArea(rArea))
+		Area = rArea;
+
 	cout << "NewArea" << endl;
 	for (POINT i : Area)
 		cout << i.x << " " << i.y << endl;

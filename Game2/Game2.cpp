@@ -169,7 +169,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 HDC mem1dc; // 더블 버퍼링
 
 RECT rectView; //화면 크기
-
+static int page = 0;
 static HBITMAP hBit, oldBit; // 더블 버퍼링 비트맵
 static Drawer player;
 
@@ -187,6 +187,11 @@ static int cannotdraw = 0;
 
 static POINT vertex[4];
 
+static int FullArea;
+
+static double PerArea;
+
+static ObjectCircle circles[1];
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -199,10 +204,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         player.setWidth(20);
         player.setHeight(20);
         player.setSpeed(8);
+        player.setLife(3);
+
         Area.push_back({ rectView.left + MAPSIZE, rectView.bottom - MAPSIZE });
         Area.push_back({ rectView.right - MAPSIZE, rectView.bottom - MAPSIZE });
         Area.push_back({ rectView.right - MAPSIZE, rectView.top + MAPSIZE });
         Area.push_back({ rectView.left + MAPSIZE, rectView.top + MAPSIZE });
+
+        circles[0].setX((rectView.left + rectView.right) / 2);
+        circles[0].setY((rectView.bottom + rectView.top) / 2);
+        circles[0].setRadius(50);
+
+        FullArea = GetArea(Area);
+        PerArea = 0;
         break;
     case WM_COMMAND:
         {
@@ -221,6 +235,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    case WM_CHAR:
+        if (wParam == 's')
+        {
+            if(page != 1)
+                page++;
+        }
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -242,224 +262,275 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //메소드
 void Update()
 {
-    vector<int> OnAreaLines;//그려진 도형의 선 위에 있는 지
-    vector<int> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
-
-    int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
-    int beforeonarealinesize = 0;
-
-    int divecheck = 0;
-
-    InvalidateRect(hWnd, NULL, FALSE);
-    //연산 직전의 플레이어의 좌표
-    int BeforeX = player.getX();
-    int BeforeY = player.getY();
-    OnAreaLineCheck(Area, player, BeforeOnAreaLines);
-
-    
-
-    if (cannotdraw == 0)
+    if (page == 1)
     {
-        //이동
-        if (GetKeyState(VK_LEFT) < 0)
+        //오브젝트 이동
+
+
+
+
+
+
+
+        vector<int> OnAreaLines;//그려진 도형의 선 위에 있는 지
+        vector<int> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
+
+        int onarealinesize = 0;//플레이어가 도형 위에 있는 선의 갯수
+        int beforeonarealinesize = 0;
+
+        int divecheck = 0;
+
+        InvalidateRect(hWnd, NULL, FALSE);
+        //연산 직전의 플레이어의 좌표
+        int BeforeX = player.getX();
+        int BeforeY = player.getY();
+        OnAreaLineCheck(Area, player, BeforeOnAreaLines);
+
+
+
+        if (cannotdraw == 0)
         {
-            player.setX(player.getX() - player.getSpeed());
-            player.setDirection(3);
-        }
-        else if (GetKeyState(VK_RIGHT) < 0)
-        {
-            player.setX(player.getX() + player.getSpeed());
-            player.setDirection(1);
-        }
-        else if (GetKeyState(VK_DOWN) < 0)
-        {
-            player.setY(player.getY() + player.getSpeed());
-            player.setDirection(0);
-        }
-        else if (GetKeyState(VK_UP) < 0)
-        {
-            player.setY(player.getY() - player.getSpeed());
-            player.setDirection(2);
-        }
-        else
-            player.setDirection(-1);//방향이 존재하지 않는다
-    }
-
-
-    //스페이스바의 눌림에 따른 기능
-    if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
-    {
-        if (startpointdirection == -1 && movepoints.size() == 1)//출발점의 방향 설정
-        {
-            if (player.getX() - movepoints[0].x > 0)
-                startpointdirection = 1;
-            else if (player.getX() - movepoints[0].x < 0)
-                startpointdirection = 3;
-            else if (player.getY() - movepoints[0].y < 0)
-                startpointdirection = 2;
-            else if (player.getY() - movepoints[0].y > 0)
-                startpointdirection = 0;
-        }
-
-        if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
-        {
-            player.setX(BeforeX);
-            player.setY(BeforeY);
-            return;
-        }
-        OnlyOnWindow(MAPSIZE, player, rectView);
-        if (player.getDrawing() == 0)//맨 처음 시작점
-        {
-            movepoints.push_back({ BeforeX, BeforeY });
-            linedirection = player.getDirection();
-        }
-        player.setDrawing(1);
-        if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
-            || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
-        {
-            movepoints.push_back({ BeforeX, BeforeY });
-            linedirection = player.getDirection();//시작 경우
-        }
-
-        if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)//자신의 선에 충돌하는지 확인
-        {
-            player.setX(movepoints[0].x);
-            player.setY(movepoints[0].y);
-            movepoints.clear();
-            cannotdraw = 1;
-            return;
-        }
-
-
-        OnAreaLineCheck(Area, player, OnAreaLines);
-
-
-
-
-        if (OnAreaLines.size() >= 1)//땅 점령후 도형 생성
-        {
-
-            movepoints.push_back({ player.getX(), player.getY() });
-            
-
-            player.setDrawing(0);
-
-            if (movepoints.size() < 2)
+            //이동
+            if (GetKeyState(VK_LEFT) < 0)
             {
-                player.setX(movepoints[0].x);
-                player.setY(movepoints[0].y);
+                player.setX(player.getX() - player.getSpeed());
+                player.setDirection(3);
             }
-            if (movepoints.size() >= 2 && (movepoints[0].x != movepoints[movepoints.size() - 1].x || movepoints[0].y != movepoints[movepoints.size() - 1].y)
-                && BeforeOnAreaLines.size() == 0)
+            else if (GetKeyState(VK_RIGHT) < 0)
             {
-                int readingdirection = 0;
-                player.setX(movepoints[movepoints.size() - 1].x);
-                player.setY(movepoints[movepoints.size() - 1].y);
-                list<POINT> templist;
-                list<POINT> redesignlist;
-                list<POINT> lastlist;
-                for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
-                    templist.push_back(movepoints[i]);
-                list<POINT>::iterator iter = templist.begin();
-                startpointdirection = -1;
-
-                RedesignList(Area, templist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);//리스트 재배열
-
-                SumAreas(Area, redesignlist);
-
-                cannotdraw = 1;
+                player.setX(player.getX() + player.getSpeed());
+                player.setDirection(1);
             }
-                movepoints.clear();
-        }
-    }
-    else//도형과 맵 테두리 이동
-    {
-        cannotdraw = 0;
-        if (player.getDrawing() == 1)//스페이스바를 떼면 되돌아가야함
-        {
-            if (movepoints.size() > 0)
+            else if (GetKeyState(VK_DOWN) < 0)
             {
-                player.setDrawing(0);
-                linedirection = -1;
-
-                for (int i = 0; i < movepoints.size(); i++)
-                    ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
-
-                player.setReturning(1);
-                movepoints.clear();
+                player.setY(player.getY() + player.getSpeed());
+                player.setDirection(0);
             }
+            else if (GetKeyState(VK_UP) < 0)
+            {
+                player.setY(player.getY() - player.getSpeed());
+                player.setDirection(2);
+            }
+            else
+                player.setDirection(-1);//방향이 존재하지 않는다
         }
 
-        if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
+
+        //스페이스바의 눌림에 따른 기능
+        if (GetKeyState(VK_SPACE) < 0)//땅따먹기 도형 그리기
         {
-            OnAreaLineCheck(Area, player, OnAreaLines);
-            int linecheck = 0;
-           
-            if (OnAreaLines.size() < 1)
+            if (startpointdirection == -1 && movepoints.size() == 1)//출발점의 방향 설정
+            {
+                if (player.getX() - movepoints[0].x > 0)
+                    startpointdirection = 1;
+                else if (player.getX() - movepoints[0].x < 0)
+                    startpointdirection = 3;
+                else if (player.getY() - movepoints[0].y < 0)
+                    startpointdirection = 2;
+                else if (player.getY() - movepoints[0].y > 0)
+                    startpointdirection = 0;
+            }
+
+            if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
             {
                 player.setX(BeforeX);
                 player.setY(BeforeY);
+                return;
+            }
+            OnlyOnWindow(MAPSIZE, player, rectView);
+            if (player.getDrawing() == 0)//맨 처음 시작점
+            {
+                movepoints.push_back({ BeforeX, BeforeY });
+                linedirection = player.getDirection();
+            }
+            player.setDrawing(1);
+            if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
+                || player.getDirection() == linedirection - 2 || player.getDirection() == linedirection + 2))
+            {
+                movepoints.push_back({ BeforeX, BeforeY });
+
+                if (movepoints[movepoints.size() - 1].x == movepoints[movepoints.size() - 2].x
+                    && movepoints[movepoints.size() - 1].y == movepoints[movepoints.size() - 2].y)
+                {
+                    movepoints.erase(movepoints.begin() + movepoints.size() - 1);
+                    movepoints.erase(movepoints.begin() + movepoints.size() - 1);
+                }
+
+                linedirection = player.getDirection();//시작 경우
+            }
+
+            if (SelfLineCheck(movepoints, player, BeforeX, BeforeY) == true)//자신의 선에 충돌하는지 확인
+            {
+                player.setX(movepoints[0].x);
+                player.setY(movepoints[0].y);
+                player.setLife(player.getLife() - 1);
+                if (player.getLife() == 0)
+                {
+                    page++;
+                    return;
+                }
+                movepoints.clear();
+                cannotdraw = 1;
+                return;
+            }
+
+            OnAreaLineCheck(Area, player, OnAreaLines);
+
+
+
+
+            if (OnAreaLines.size() >= 1)//땅 점령후 도형 생성
+            {
+
+                movepoints.push_back({ player.getX(), player.getY() });
+
+                player.setDrawing(0);
+
+                if (movepoints.size() < 2)
+                {
+                    player.setX(movepoints[0].x);
+                    player.setY(movepoints[0].y);
+                }
+                if (movepoints.size() >= 2 && (movepoints[0].x != movepoints[movepoints.size() - 1].x || movepoints[0].y != movepoints[movepoints.size() - 1].y)
+                    && BeforeOnAreaLines.size() == 0)
+                {
+                    int readingdirection = 0;
+                    player.setX(movepoints[movepoints.size() - 1].x);
+                    player.setY(movepoints[movepoints.size() - 1].y);
+                    list<POINT> templist;
+                    list<POINT> redesignlist;
+                    list<POINT> lastlist;
+                    for (int i = 0; i < movepoints.size(); i++)//지나왔던 점들을 전부 저장
+                        templist.push_back(movepoints[i]);
+                    list<POINT>::iterator iter = templist.begin();
+                    startpointdirection = -1;
+
+                    RedesignList(Area, templist, redesignlist, movepoints[0], movepoints[movepoints.size() - 1]);//리스트 재배열
+
+                    SumAreas(Area, redesignlist);
+
+                    cannotdraw = 1;
+
+                    PerArea = (double)GetArea(Area) / (double)FullArea;
+
+                    if (PerArea < 0.2)
+                        page++;
+                }
+                movepoints.clear();
             }
         }
-        else//돌아가는 상태일 때
+        else//도형과 맵 테두리 이동
         {
-            int lastpointx = ReturnLines[ReturnLines.size() - 1].x;
-            int lastpointy = ReturnLines[ReturnLines.size() - 1].y;
+            cannotdraw = 0;
+            if (player.getDrawing() == 1)//스페이스바를 떼면 되돌아가야함
+            {
+                if (movepoints.size() > 0)
+                {
+                    player.setDrawing(0);
+                    linedirection = -1;
 
-            if (lastpointx == player.getX() && lastpointy == player.getY())
-                ReturnLines.pop_back();
-            else
-                PlayerCorrectOnLine(lastpointx, lastpointy, BeforeX, BeforeY, player);
+                    for (int i = 0; i < movepoints.size(); i++)
+                        ReturnLines.push_back(movepoints[i]);//돌아가기위한 선들
 
-            if (ReturnLines.size() <= 0)
-                player.setReturning(0);
+                    player.setReturning(1);
+                    movepoints.clear();
+                }
+            }
+
+            if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
+            {
+                OnAreaLineCheck(Area, player, OnAreaLines);
+                int linecheck = 0;
+
+                if (OnAreaLines.size() < 1)
+                {
+                    player.setX(BeforeX);
+                    player.setY(BeforeY);
+                }
+            }
+            else//돌아가는 상태일 때
+            {
+                int lastpointx = ReturnLines[ReturnLines.size() - 1].x;
+                int lastpointy = ReturnLines[ReturnLines.size() - 1].y;
+
+                if (lastpointx == player.getX() && lastpointy == player.getY())
+                    ReturnLines.pop_back();
+                else
+                    PlayerCorrectOnLine(lastpointx, lastpointy, BeforeX, BeforeY, player);
+
+                if (ReturnLines.size() <= 0)
+                    player.setReturning(0);
+            }
         }
     }
-
 }
 
 void DrawDoubleBuffering(HDC& hdc)
 {
+    TCHAR temptchar[30];
+
     mem1dc = CreateCompatibleDC(hdc);
     if (hBit == NULL)
         hBit = CreateCompatibleBitmap(hdc, rectView.right, rectView.bottom);
     oldBit = (HBITMAP)SelectObject(mem1dc, hBit);
     FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
 
-    POINT playerpoint = { player.getX(), player.getY() };
-
-
-    POINT* temp = new POINT[Area.size() + 1];
-    HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
-    HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
-    int i = 0;
-    for (POINT x : Area)//도형을 그림
+    if (page == 1)
     {
-        temp[i++] = x;
+
+        POINT playerpoint = { player.getX(), player.getY() };
+
+
+        POINT* temp = new POINT[Area.size() + 1];
+        HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
+        HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
+        int i = 0;
+        for (POINT x : Area)//도형을 그림
+        {
+            temp[i++] = x;
+        }
+        Polygon(mem1dc, temp, Area.size());
+        SelectObject(mem1dc, oldBrush);
+        DeleteObject(myBrush);
+        delete[] temp;
+
+
+        for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
+        {
+            if (i == movepoints.size() - 1)
+                DrawLine(mem1dc, movepoints[i], playerpoint);
+            else
+                DrawLine(mem1dc, movepoints[i], movepoints[i + 1]);
+        }
+
+        for (int i = 0; i < ReturnLines.size(); i++)
+        {
+            if (i == ReturnLines.size() - 1)
+                DrawLine(mem1dc, ReturnLines[i], playerpoint);
+            else
+                DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
+        }
+        _stprintf_s(temptchar, L"남은 공간 : %.1lf", PerArea * 100);
+        TextOut(mem1dc, 100, 100, temptchar, _tcslen(temptchar));
+        _stprintf_s(temptchar, L"남은 체력 : %d", player.getLife());
+        TextOut(mem1dc, 100, 120, temptchar, _tcslen(temptchar));
+
+        DrawRectangle(mem1dc, player);
     }
-    Polygon(mem1dc, temp, Area.size());
-    SelectObject(mem1dc, oldBrush);
-    DeleteObject(myBrush);
-    delete[] temp;
 
-
-    for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
+    if (page == 2)
     {
-        if(i == movepoints.size() - 1)
-            DrawLine(mem1dc, movepoints[i], playerpoint);
+        HFONT hfont = CreateFont(70, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, TEXT("돋움"));
+        HFONT holdfont = (HFONT)SelectObject(mem1dc, hfont);
+        if (player.getLife() <= 0)
+        {
+            TextOut(mem1dc, 220, 300, L"Game Over", _tcslen(L"Game Over"));
+        }
         else
-            DrawLine(mem1dc, movepoints[i], movepoints[i + 1]);
+        {
+            TextOut(mem1dc, 220, 300, L"Game Clear", _tcslen(L"Game Clear"));
+        }
     }
-
-    for (int i = 0; i < ReturnLines.size(); i++)
-    {
-        if (i == ReturnLines.size() - 1)
-            DrawLine(mem1dc, ReturnLines[i], playerpoint);
-        else
-            DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
-    }
-
-    DrawRectangle(mem1dc, player);
 
     BitBlt(hdc, 0, 0, rectView.right, rectView.bottom, mem1dc, 0, 0, SRCCOPY);
     SelectObject(mem1dc, oldBit);

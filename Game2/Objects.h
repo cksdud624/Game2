@@ -21,6 +21,27 @@ public:
 	int getDirection() { return direction; }
 
 };
+
+class ObjectCircle
+{
+private:
+	int x;
+	int y;
+	int radius;
+	int angle;
+public:
+	void setX(int x) { this->x = x; }
+	void setY(int y) { this->y = y; }
+	void setRadius(int radius) { this->radius = radius; }
+	void setAngle(int angle) { this->angle = angle; }
+	
+	int getX() { return x; }
+	int getY() { return y; }
+	int getRadius() { return radius; }
+	int getAngle() { return angle; }
+};
+
+
 class Drawer
 {
 private:
@@ -32,6 +53,7 @@ private:
 	int speed;
 	int direction;
 	int returning; //0 : 해당 없음 1 : 원래 위치로 돌아가는 중
+	int life;
 public:
 	void setX(int x) { this->x = x; }
 	void setY(int y) { this->y = y; }
@@ -41,6 +63,7 @@ public:
 	void setSpeed(int speed) { this->speed = speed; }
 	void setDirection(int direction) { this->direction = direction; }
 	void setReturning(int returning) { this->returning = returning; }
+	void setLife(int life) { this->life = life; }
 
 	int getX() { return x; }
 	int getY() { return y; }
@@ -50,4 +73,5 @@ public:
 	int getSpeed() { return speed; }
 	int getDirection() { return direction; }
 	int getReturning() { return returning; }
+	int getLife() { return life; }
 };
