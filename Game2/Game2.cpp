@@ -1,6 +1,6 @@
 ﻿// Game2.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
-
+#define _USE_MATH_DEFINES
 #include "framework.h"
 #include "Game2.h"
 
@@ -191,7 +191,7 @@ static int FullArea;
 
 static double PerArea;
 
-static ObjectCircle circles[1];
+static vector<ObjectCircle> circles;//오브젝트
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -211,9 +211,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         Area.push_back({ rectView.right - MAPSIZE, rectView.top + MAPSIZE });
         Area.push_back({ rectView.left + MAPSIZE, rectView.top + MAPSIZE });
 
-        circles[0].setX((rectView.left + rectView.right) / 2);
-        circles[0].setY((rectView.bottom + rectView.top) / 2);
-        circles[0].setRadius(50);
+        ObjectCircle circle;
+        circle.setX((rectView.left + rectView.right) / 2);
+        circle.setY((rectView.bottom + rectView.top) / 2);
+        circle.setRadius(50);
+        circle.setSpeed(8);
+        circle.setAngle(30);
+
+        circles.push_back(circle);
 
         FullArea = GetArea(Area);
         PerArea = 0;
@@ -265,12 +270,47 @@ void Update()
     if (page == 1)
     {
         //오브젝트 이동
-
-
-
-
-
-
+        for (int i = 0; i < circles.size(); i++)
+        {
+            CollideCheck(Area, circles[i]);
+            if (player.getReturning() == 0)
+            {
+                if (HitPlayer(movepoints, circles[i], player) == true)
+                {
+                    player.setLife(player.getLife() - 1);
+                    player.setX(movepoints[i].x);
+                    player.setY(movepoints[i].y);
+                    movepoints.clear();
+                    cannotdraw = 1;
+                    if (player.getLife() <= 0)
+                    {
+                        page++;
+                        cout << page << endl;
+                        return;
+                    }
+                    return;
+                }
+            }
+            else if (player.getReturning() == 1)
+            {
+                if (HitPlayer(ReturnLines, circles[i], player) == true)
+                {
+                    player.setLife(player.getLife() - 1);
+                    player.setX(ReturnLines[i].x);
+                    player.setY(ReturnLines[i].y);
+                    ReturnLines.clear();
+                    player.setReturning(0);
+                    cannotdraw = 1;
+                    if (player.getLife() <= 0)
+                    {
+                        page++;
+                        cout << page << endl;
+                        return;
+                    }
+                    return;
+                }
+            }
+        }
 
         vector<int> OnAreaLines;//그려진 도형의 선 위에 있는 지
         vector<int> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
@@ -280,7 +320,6 @@ void Update()
 
         int divecheck = 0;
 
-        InvalidateRect(hWnd, NULL, FALSE);
         //연산 직전의 플레이어의 좌표
         int BeforeX = player.getX();
         int BeforeY = player.getY();
@@ -409,6 +448,18 @@ void Update()
 
                     SumAreas(Area, redesignlist);
 
+                    for (int i = 0; i < circles.size(); i++)
+                    {
+                        if (OutOfArea(Area, circles[i]) == true || OnArea(Area, circles[i]) == false)
+                        {
+                            circles.erase(circles.begin() + i);
+                            if (circles.size() > 0)
+                                i = 0;
+                            else
+                                break;
+                        }
+                    }
+
                     cannotdraw = 1;
 
                     PerArea = (double)GetArea(Area) / (double)FullArea;
@@ -463,6 +514,9 @@ void Update()
             }
         }
     }
+
+ 
+    InvalidateRect(hWnd, NULL, FALSE);
 }
 
 void DrawDoubleBuffering(HDC& hdc)
@@ -510,6 +564,13 @@ void DrawDoubleBuffering(HDC& hdc)
             else
                 DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
         }
+
+        for (int i = 0; i < circles.size(); i++)
+        {
+            Ellipse(mem1dc, circles[i].getX() - circles[i].getRadius(), circles[i].getY() - circles[i].getRadius(),
+                circles[i].getX() + circles[i].getRadius(), circles[i].getY() + circles[i].getRadius());
+        }
+    
         _stprintf_s(temptchar, L"남은 공간 : %.1lf", PerArea * 100);
         TextOut(mem1dc, 100, 100, temptchar, _tcslen(temptchar));
         _stprintf_s(temptchar, L"남은 체력 : %d", player.getLife());
@@ -518,7 +579,7 @@ void DrawDoubleBuffering(HDC& hdc)
         DrawRectangle(mem1dc, player);
     }
 
-    if (page == 2)
+    if (page >= 2)
     {
         HFONT hfont = CreateFont(70, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, TEXT("돋움"));
         HFONT holdfont = (HFONT)SelectObject(mem1dc, hfont);

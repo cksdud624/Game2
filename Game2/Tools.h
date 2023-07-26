@@ -7,8 +7,6 @@
 
 using namespace std;
 
-int Randomize(int min, int max);
-
 
 bool OnLineCheckX(int startx, int endx, int y, Drawer& player);
 bool OnLineCheckY(int x, int starty, int endy, Drawer& player);
@@ -164,11 +162,13 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 		Area.push_back(*recheckiter);
 	}
 
+	/*
 	recheckiter = redesignlist.begin();
 	for (; recheckiter != tempiter; recheckiter++)
 	{
 		Area.push_back(*recheckiter);
 	}
+	*/
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -190,8 +190,6 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 			break;
 		}
 	}
-
-
 
 
 	while (checkiter != temp.end())
@@ -217,13 +215,16 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 				if ((*checkiter).x == end.x && (*checkiter).y == end.y)
 				{
 					if ((*recheckiter).y != (*nextiter).y)
+					{
 						Area.push_back(*checkiter);
+					}
 				}
 				else
 				{
 					if ((*nextiter).x == end.x && (*nextiter).y == end.y)
 					{
 						Area.pop_back();
+						rArea.push_back(*checkiter);
 						nextiter++;
 						checkiter++;
 						continue;
@@ -249,13 +250,16 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 				if ((*checkiter).x == end.x && (*checkiter).y == end.y)
 				{
 					if ((*recheckiter).x != (*nextiter).x)
+					{
 						Area.push_back(*checkiter);
+					}
 				}
 				else
 				{
 					if ((*nextiter).x == end.x && (*nextiter).y == end.y)
 					{
 						Area.pop_back();
+						rArea.push_back(*checkiter);
 						nextiter++;
 						checkiter++;
 						continue;
@@ -266,6 +270,7 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 					rArea.push_back(*checkiter);
 			}
 		}
+
 		nextiter++;
 		checkiter++;
 
@@ -273,9 +278,31 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 			onstartpointLine = 0;
 	}
 
+	list<POINT>::iterator rareaiter = rArea.begin();
+	list<POINT>::iterator rnextiter = rArea.begin();
+	rnextiter++;
+
+	for (; rareaiter != rArea.end(); rareaiter++, rnextiter++)
+	{
+		if (rnextiter == rArea.end())
+			rnextiter = rArea.begin();
+
+		if ((*rareaiter).x == (*rnextiter).x &&
+			(*rareaiter).y == (*rnextiter).y)
+		{
+			rArea.erase(rnextiter);
+			rArea.erase(rareaiter);
+			break;
+		}
+	}
 
 	cout << "redesignlist" << endl;
 	for(POINT i : redesignlist)
+		cout << i.x << " " << i.y << endl;
+	cout << endl;
+
+	cout << "Area" << endl;
+	for (POINT i : Area)
 		cout << i.x << " " << i.y << endl;
 	cout << endl;
 

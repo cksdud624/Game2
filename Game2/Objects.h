@@ -1,4 +1,6 @@
 #pragma once
+
+#include <list>
 class Line
 {
 private:
@@ -20,25 +22,6 @@ public:
 	int getEndY() { return endy; }
 	int getDirection() { return direction; }
 
-};
-
-class ObjectCircle
-{
-private:
-	int x;
-	int y;
-	int radius;
-	int angle;
-public:
-	void setX(int x) { this->x = x; }
-	void setY(int y) { this->y = y; }
-	void setRadius(int radius) { this->radius = radius; }
-	void setAngle(int angle) { this->angle = angle; }
-	
-	int getX() { return x; }
-	int getY() { return y; }
-	int getRadius() { return radius; }
-	int getAngle() { return angle; }
 };
 
 
@@ -74,4 +57,26 @@ public:
 	int getDirection() { return direction; }
 	int getReturning() { return returning; }
 	int getLife() { return life; }
+};
+
+class ObjectCircle
+{
+private:
+	double x;
+	double y;
+	int radius;
+	int angle;
+	int speed;
+public:
+	void setX(double x) { this->x = x; }
+	void setY(double y) { this->y = y; }
+	void setRadius(int radius) { this->radius = radius; }
+	void setAngle(int angle) { this->angle = angle; }
+	void setSpeed(int speed) { this->speed = speed; }
+
+	double getX() { return x; }
+	double getY() { return y; }
+	int getRadius() { return radius; }
+	int getAngle() { return angle; }
+	int getSpeed() { return speed; }
 };
