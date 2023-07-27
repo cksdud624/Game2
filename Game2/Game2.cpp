@@ -202,7 +202,7 @@ static clock_t oldanimationtimer = clock();
 static clock_t newanimationtimer;
 
 static POINT* temp;
-
+static Image* image;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -240,6 +240,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         FullArea = GetArea(Area);
         PerArea = 1;
+
+        image = Image::FromFile(L"images/1.jpg");
     }
         break;
     case WM_COMMAND:
@@ -566,7 +568,6 @@ void Update()
  
     InvalidateRect(hWnd, NULL, FALSE);
 }
-
 void DrawDoubleBuffering(HDC& hdc)
 {
     TCHAR temptchar[30];
@@ -609,16 +610,20 @@ void DrawDoubleBuffering(HDC& hdc)
         _stprintf_s(temptchar, L"남은 체력 : %d", player.getLife());
         TextOut(mem1dc, 100, 120, temptchar, _tcslen(temptchar));
         DrawRectangle(mem1dc, player);
+        Graphics g(mem1dc);
+        Rect rect[6];
+        for (int i = 0; i < circles.size(); i++)
+        {
+            rect[i].X = circles[i].getX();
+            rect[i].Y = circles[i].getY();
+            rect[i].Width = circles[i].getRadius() * 2;
+            rect[i].Height = circles[i].getRadius() * 2;
+        }
 
         for (int i = 0; i < circles.size(); i++)
         {
-            Image* image = Image::FromFile(L"images/1.jpg");
-            ::Graphics g(mem1dc);
-
-            g.DrawImage(image, 500, 500);
-            delete image;
+            g.DrawImage(image, rect[i]);
         }
-
     }
 
     if (page >= 2)
