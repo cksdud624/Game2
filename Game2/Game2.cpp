@@ -1,8 +1,15 @@
 ﻿// Game2.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
 #define _USE_MATH_DEFINES
+#include <ole2.h>
 #include "framework.h"
 #include "Game2.h"
+#include <gdiplus.h>
+
+using namespace Gdiplus;
+#pragma comment(lib, "gdiplus.lib") 
+
+ULONG_PTR m_gdiplusToken;
 
 #define MAX_LOADSTRING 100
 
@@ -28,8 +35,6 @@ void DrawDoubleBuffering(HDC& hdc);
 #pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console") 
 
 #endif
-
-
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -64,8 +69,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // 기본 메시지 루프입니다:
 
-    static clock_t oldtime = clock();
-    static clock_t newtime;
+    clock_t oldtime = clock();
+    clock_t newtime;
 
     while (true)
     {
@@ -86,16 +91,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             newtime = clock();
             if (newtime - oldtime >= 34)
             {
-                Update();
                 oldtime = newtime;
+                Update();
             }
         }
     }
 
     return (int)msg.wParam;
 }
-
-
 
 //
 //  함수: MyRegisterClass()
@@ -136,6 +139,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 static HWND hWnd;
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+   GdiplusStartupInput gdiplusStartupInput;
+   GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED | WS_SYSMENU,
@@ -193,11 +198,18 @@ static double PerArea;
 
 static vector<ObjectCircle> circles;//오브젝트
 
+static clock_t oldanimationtimer = clock();
+static clock_t newanimationtimer;
+
+static POINT* temp;
+
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
     case WM_CREATE:
+    {
         GetClientRect(hWnd, &rectView);
         player.setX(rectView.left + MAPSIZE);
         player.setY(rectView.top + MAPSIZE);
@@ -210,18 +222,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         Area.push_back({ rectView.right - MAPSIZE, rectView.bottom - MAPSIZE });
         Area.push_back({ rectView.right - MAPSIZE, rectView.top + MAPSIZE });
         Area.push_back({ rectView.left + MAPSIZE, rectView.top + MAPSIZE });
-
-        ObjectCircle circle;
-        circle.setX((rectView.left + rectView.right) / 2);
-        circle.setY((rectView.bottom + rectView.top) / 2);
-        circle.setRadius(50);
-        circle.setSpeed(8);
-        circle.setAngle(30);
-
-        circles.push_back(circle);
-
+        for (int i = 0; i < 6; i++)
+        {
+            ObjectCircle circle;
+            circle.setX((rectView.left + rectView.right) / 2);
+            circle.setY((rectView.bottom + rectView.top) / 2);
+            circle.setRadius(20);
+            circle.setSpeed(6);
+            circle.setAngle(randomize(0, 359));
+            circles.push_back(circle);
+        }
+        temp = new POINT[Area.size() + 1];
+        int i = 0;
+        for (POINT x : Area)//도형을 그림
+        {
+            temp[i++] = x;
+        }
         FullArea = GetArea(Area);
-        PerArea = 0;
+        PerArea = 1;
+    }
         break;
     case WM_COMMAND:
         {
@@ -272,46 +291,46 @@ void Update()
         //오브젝트 이동
         for (int i = 0; i < circles.size(); i++)
         {
-            CollideCheck(Area, circles[i]);
-            if (player.getReturning() == 0)
+            CollideCheck(Area, circles[i],circles[i].getSpeed());
+            if (movepoints.size() > 0 || player.getReturning() == 1)
             {
-                if (HitPlayer(movepoints, circles[i], player) == true)
+                if (player.getReturning() == 0)
                 {
-                    player.setLife(player.getLife() - 1);
-                    player.setX(movepoints[i].x);
-                    player.setY(movepoints[i].y);
-                    movepoints.clear();
-                    cannotdraw = 1;
-                    if (player.getLife() <= 0)
+                    if (HitPlayer(movepoints, circles[i], player) == true)
                     {
-                        page++;
-                        cout << page << endl;
+                        player.setLife(player.getLife() - 1);
+                        player.setX(movepoints[0].x);
+                        player.setY(movepoints[0].y);
+                        movepoints.clear();
+                        cannotdraw = 1;
+                        if (player.getLife() <= 0)
+                        {
+                            page++;
+                            return;
+                        }
                         return;
                     }
-                    return;
                 }
-            }
-            else if (player.getReturning() == 1)
-            {
-                if (HitPlayer(ReturnLines, circles[i], player) == true)
+                else if (player.getReturning() == 1)
                 {
-                    player.setLife(player.getLife() - 1);
-                    player.setX(ReturnLines[i].x);
-                    player.setY(ReturnLines[i].y);
-                    ReturnLines.clear();
-                    player.setReturning(0);
-                    cannotdraw = 1;
-                    if (player.getLife() <= 0)
+                    if (HitPlayer(ReturnLines, circles[i], player) == true)
                     {
-                        page++;
-                        cout << page << endl;
+                        player.setLife(player.getLife() - 1);
+                        player.setX(ReturnLines[0].x);
+                        player.setY(ReturnLines[0].y);
+                        ReturnLines.clear();
+                        player.setReturning(0);
+                        cannotdraw = 1;
+                        if (player.getLife() <= 0)
+                        {
+                            page++;
+                            return;
+                        }
                         return;
                     }
-                    return;
                 }
             }
         }
-
         vector<int> OnAreaLines;//그려진 도형의 선 위에 있는 지
         vector<int> BeforeOnAreaLines;//직전 좌표가 그려진 도형의 선 위에 있는 지
 
@@ -370,11 +389,19 @@ void Update()
                     startpointdirection = 0;
             }
 
-            if (player.getReturning() == 1)//돌아가고 있을 때는 새로운 행동을 할 수 없다.
+            OnAreaLineCheck(Area, player, OnAreaLines);
+
+            if (player.getReturning() == 1)
             {
                 player.setX(BeforeX);
                 player.setY(BeforeY);
                 return;
+            }
+
+            if (OnArea(Area, player) == false && OnAreaLines.size() == 0)
+            {
+                player.setX(BeforeX);
+                player.setY(BeforeY);
             }
             OnlyOnWindow(MAPSIZE, player, rectView);
             if (player.getDrawing() == 0)//맨 처음 시작점
@@ -413,11 +440,6 @@ void Update()
                 return;
             }
 
-            OnAreaLineCheck(Area, player, OnAreaLines);
-
-
-
-
             if (OnAreaLines.size() >= 1)//땅 점령후 도형 생성
             {
 
@@ -450,7 +472,7 @@ void Update()
 
                     for (int i = 0; i < circles.size(); i++)
                     {
-                        if (OutOfArea(Area, circles[i]) == true || OnArea(Area, circles[i]) == false)
+                        if (OnArea(Area, circles[i]) == false)
                         {
                             circles.erase(circles.begin() + i);
                             if (circles.size() > 0)
@@ -458,6 +480,15 @@ void Update()
                             else
                                 break;
                         }
+                    }
+
+                    delete[] temp;
+
+                    temp = new POINT[Area.size() + 1];
+                    int i = 0;
+                    for (POINT x : Area)//도형을 그림
+                    {
+                        temp[i++] = x;
                     }
 
                     cannotdraw = 1;
@@ -491,9 +522,27 @@ void Update()
             if (player.getReturning() == 0)//돌아가고 있는 상태가 아닐 때
             {
                 OnAreaLineCheck(Area, player, OnAreaLines);
-                int linecheck = 0;
+                int check = 0;
 
                 if (OnAreaLines.size() < 1)
+                {
+                    player.setX(BeforeX);
+                    player.setY(BeforeY);
+                }
+
+                for (int i = 0; i < OnAreaLines.size(); i++)
+                {
+                    for (int j = 0; j < BeforeOnAreaLines.size(); j++)
+                    {
+                        if (OnAreaLines[i] == BeforeOnAreaLines[j])
+                        {
+                            check = 1;
+                            break;
+                        }
+                    }
+                }
+
+                if (check == 0)
                 {
                     player.setX(BeforeX);
                     player.setY(BeforeY);
@@ -514,7 +563,6 @@ void Update()
             }
         }
     }
-
  
     InvalidateRect(hWnd, NULL, FALSE);
 }
@@ -522,31 +570,22 @@ void Update()
 void DrawDoubleBuffering(HDC& hdc)
 {
     TCHAR temptchar[30];
-
     mem1dc = CreateCompatibleDC(hdc);
     if (hBit == NULL)
         hBit = CreateCompatibleBitmap(hdc, rectView.right, rectView.bottom);
     oldBit = (HBITMAP)SelectObject(mem1dc, hBit);
     FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
-
+    SetTextAlign(mem1dc, TA_CENTER);
     if (page == 1)
     {
 
         POINT playerpoint = { player.getX(), player.getY() };
 
-
-        POINT* temp = new POINT[Area.size() + 1];
         HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
         HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
-        int i = 0;
-        for (POINT x : Area)//도형을 그림
-        {
-            temp[i++] = x;
-        }
         Polygon(mem1dc, temp, Area.size());
         SelectObject(mem1dc, oldBrush);
         DeleteObject(myBrush);
-        delete[] temp;
 
 
         for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
@@ -564,19 +603,22 @@ void DrawDoubleBuffering(HDC& hdc)
             else
                 DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
         }
-
-        for (int i = 0; i < circles.size(); i++)
-        {
-            Ellipse(mem1dc, circles[i].getX() - circles[i].getRadius(), circles[i].getY() - circles[i].getRadius(),
-                circles[i].getX() + circles[i].getRadius(), circles[i].getY() + circles[i].getRadius());
-        }
-    
+   
         _stprintf_s(temptchar, L"남은 공간 : %.1lf", PerArea * 100);
         TextOut(mem1dc, 100, 100, temptchar, _tcslen(temptchar));
         _stprintf_s(temptchar, L"남은 체력 : %d", player.getLife());
         TextOut(mem1dc, 100, 120, temptchar, _tcslen(temptchar));
-
         DrawRectangle(mem1dc, player);
+
+        for (int i = 0; i < circles.size(); i++)
+        {
+            Image* image = Image::FromFile(L"images/1.jpg");
+            ::Graphics g(mem1dc);
+
+            g.DrawImage(image, 500, 500);
+            delete image;
+        }
+
     }
 
     if (page >= 2)
@@ -593,7 +635,18 @@ void DrawDoubleBuffering(HDC& hdc)
         }
     }
 
+    if (page == 0)
+    {
+        HFONT hfont = CreateFont(70, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, TEXT("돋움"));
+        HFONT holdfont = (HFONT)SelectObject(mem1dc, hfont);
+        TextOut(mem1dc, 400, 300, L"갈스패닉 모작", _tcslen(L"갈스패닉 모작"));
+        hfont = CreateFont(20, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, TEXT("돋움"));
+        holdfont = (HFONT)SelectObject(mem1dc, hfont);
+        TextOut(mem1dc, 400, 450, L"Press 's' key to start", _tcslen(L"Press 's' key to start"));
+    }
+
     BitBlt(hdc, 0, 0, rectView.right, rectView.bottom, mem1dc, 0, 0, SRCCOPY);
+
     SelectObject(mem1dc, oldBit);
     DeleteDC(mem1dc);
 }

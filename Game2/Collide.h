@@ -8,6 +8,46 @@
 
 using namespace std;
 
+bool OnArea(list<POINT>& Area, Drawer& player)
+{
+	list<POINT>::iterator areaiter = Area.begin();
+	list<POINT>::iterator nextiter = Area.begin();
+	nextiter++;
+
+	int max, min;
+	int count = 0;
+	for (; areaiter != Area.end(); areaiter++, nextiter++)
+	{
+		if (nextiter == Area.end())
+			nextiter = Area.begin();
+
+		if ((*areaiter).x == (*nextiter).x)//y선일때만
+		{
+			if ((*areaiter).y < (*nextiter).y)
+			{
+				min = (*areaiter).y;
+				max = (*nextiter).y;
+			}
+			else
+			{
+				max = (*areaiter).y;
+				min = (*nextiter).y;
+			}
+
+			if (player.getX() < (*areaiter).x && player.getY() <= max && player.getY() > min)
+			{
+				count++;
+			}
+		}
+
+	}
+
+	if (count % 2 == 0)
+		return false;
+	else
+		return true;
+}
+
 bool OnArea(list<POINT>& Area, ObjectCircle& circle)
 {
 	list<POINT>::iterator areaiter = Area.begin();
@@ -49,8 +89,6 @@ bool OnArea(list<POINT>& Area, ObjectCircle& circle)
 
 bool OutOfArea(list<POINT>& Area, ObjectCircle& circle)
 {
-	circle.setX(circle.getX() + (double)circle.getSpeed() * cos(circle.getAngle() * M_PI / 180));
-	circle.setY(circle.getY() - (double)circle.getSpeed() * sin(circle.getAngle() * M_PI / 180));
 	list<POINT>::iterator areaiter = Area.begin();
 	list<POINT>::iterator nextiter = Area.begin();
 	nextiter++;
@@ -172,17 +210,21 @@ bool HitPlayer(vector<POINT>& movements, ObjectCircle& circle, Drawer& player)
 	return false;
 }
 
-void CollideCheck(list<POINT>& Area, ObjectCircle& circle)
+void CollideCheck(list<POINT>& Area, ObjectCircle& circle, double speed)
 {
-	circle.setX(circle.getX() + (double)circle.getSpeed() * cos(circle.getAngle() * M_PI / 180));
-	circle.setY(circle.getY() - (double)circle.getSpeed() * sin(circle.getAngle() * M_PI / 180));
+	circle.setX(circle.getX() + circle.getSpeed() * cos(circle.getAngle() * M_PI / 180));
+	circle.setY(circle.getY() - circle.getSpeed() * sin(circle.getAngle() * M_PI / 180));
 	list<POINT>::iterator areaiter = Area.begin();
 	list<POINT>::iterator nextiter = Area.begin();
+	list<POINT>::iterator previter = Area.end();
+	previter--;
 	nextiter++;
 	int max, min;
 	int collide = 0;
-	for (; areaiter != Area.end(); areaiter++, nextiter++)
+	for (; areaiter != Area.end(); areaiter++, nextiter++, previter++)
 	{
+		if (previter == Area.end())
+			previter = Area.begin();
 		if (nextiter == Area.end())
 			nextiter = Area.begin();
 
@@ -231,8 +273,6 @@ void CollideCheck(list<POINT>& Area, ObjectCircle& circle)
 			break;
 		}
 	}
-
-	int speed = circle.getSpeed();
 	if (collide == 1)
 	{
 		circle.setX(circle.getX() - circle.getSpeed() * cos(circle.getAngle() * M_PI / 180));
@@ -244,10 +284,10 @@ void CollideCheck(list<POINT>& Area, ObjectCircle& circle)
 			circle.setY(circle.getY() - sin(circle.getAngle() * M_PI / 180));
 			speed--;
 		}
-		circle.setAngle(360 - circle.getAngle());
+			circle.setAngle(360 - circle.getAngle());
 
-		circle.setX(circle.getX() + (double)(speed + 1) * cos(circle.getAngle() * M_PI / 180));
-		circle.setY(circle.getY() - (double)(speed + 1) * sin(circle.getAngle() * M_PI / 180));
+		circle.setX(circle.getX() + speed * cos(circle.getAngle() * M_PI / 180));
+		circle.setY(circle.getY() - speed * sin(circle.getAngle() * M_PI / 180));
 	}
 
 	else if (collide == 2)
@@ -255,17 +295,18 @@ void CollideCheck(list<POINT>& Area, ObjectCircle& circle)
 		circle.setX(circle.getX() - circle.getSpeed() * cos(circle.getAngle() * M_PI / 180));
 		circle.setY(circle.getY() + circle.getSpeed() * sin(circle.getAngle() * M_PI / 180));
 
-		while (!(abs((*areaiter).x - circle.getX()) <= circle.getRadius()
+		while (!(abs((*areaiter).x - circle.getX()) < circle.getRadius()
 			&& circle.getY() < max && circle.getY() > min))
 		{
 			circle.setX(circle.getX() + cos(circle.getAngle() * M_PI / 180));
 			circle.setY(circle.getY() - sin(circle.getAngle() * M_PI / 180));
 			speed--;
 		}
+
 		circle.setAngle(180 - circle.getAngle());
 
-		circle.setX(circle.getX() + (double)(speed + 1) * cos(circle.getAngle() * M_PI / 180));
-		circle.setY(circle.getY() - (double)(speed + 1) * sin(circle.getAngle() * M_PI / 180));
+		circle.setX(circle.getX() + speed * cos(circle.getAngle() * M_PI / 180));
+		circle.setY(circle.getY() - speed * sin(circle.getAngle() * M_PI / 180));
 	}
 
 	else if (collide == 3)
@@ -281,15 +322,50 @@ void CollideCheck(list<POINT>& Area, ObjectCircle& circle)
 			speed--;
 		}
 
-		if (abs((*areaiter).y - circle.getY()) >= abs((*areaiter).x - circle.getX()))
+		int reflectdirection = 0;
+		double incl = abs(((*previter).y - (*nextiter).y) / ((*previter).x - (*nextiter).x));
+		/*
+		if (abs((*areaiter).y - circle.getY()) > abs((*areaiter).x - circle.getX()) * incl)
 		{
 			circle.setAngle(360 - circle.getAngle());
+			reflectdirection = 1;
 		}
 		else
 		{
 			circle.setAngle(180 - circle.getAngle());
+			reflectdirection = 2;
 		}
-		circle.setX(circle.getX() + (double)(speed + 1) * cos(circle.getAngle() * M_PI / 180));
-		circle.setY(circle.getY() - (double)(speed + 1) * sin(circle.getAngle() * M_PI / 180));
+		*/
+		circle.setAngle(circle.getAngle() + 180);
+		circle.setX(circle.getX() + speed * cos(circle.getAngle() * M_PI / 180));
+		circle.setY(circle.getY() - speed * sin(circle.getAngle() * M_PI / 180));
+
+		/*
+		if (reflectdirection == 1)
+		{
+			int pixel;
+			if ((*areaiter).y < circle.getY())
+				pixel = 1;
+			else
+				pixel = -1;
+			while (abs((*areaiter).y - circle.getY()) < circle.getRadius())
+			{
+				circle.setY(circle.getY() + pixel);
+			}
+		}
+
+		else if (reflectdirection == 2)
+		{
+			int pixel;
+			if ((*areaiter).x < circle.getX())
+				pixel = 1;
+			else
+				pixel = -1;
+			while (abs((*areaiter).x - circle.getX()) < circle.getRadius())
+			{
+				circle.setX(circle.getX() + pixel);
+			}
+		}
+		*/
 	}
 }

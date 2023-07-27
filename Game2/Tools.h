@@ -4,9 +4,21 @@
 #include "Objects.h"
 #include <vector>
 #include <list>
+#include <random>
 
 using namespace std;
 
+
+int randomize(int min, int max)
+{
+	random_device rd;
+
+	mt19937_64 mt(rd());
+
+	uniform_int_distribution<int> range(min, max);
+
+	return range(mt);
+}
 
 bool OnLineCheckX(int startx, int endx, int y, Drawer& player);
 bool OnLineCheckY(int x, int starty, int endy, Drawer& player);
@@ -162,13 +174,11 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 		Area.push_back(*recheckiter);
 	}
 
-	/*
 	recheckiter = redesignlist.begin();
 	for (; recheckiter != tempiter; recheckiter++)
 	{
 		Area.push_back(*recheckiter);
 	}
-	*/
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -191,7 +201,6 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 		}
 	}
 
-
 	while (checkiter != temp.end())
 	{
 		if (nextiter == temp.end())
@@ -206,7 +215,6 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 				{
 					Area.push_back(*checkiter);
 				}
-
 				if (onstartpointLine == 0 && endpointLine == 0)
 					rArea.push_back(*checkiter);
 			}
@@ -280,19 +288,28 @@ void SumAreas(list<POINT>& Area, list<POINT> redesignlist)//새로운 도형으로 재생
 
 	list<POINT>::iterator rareaiter = rArea.begin();
 	list<POINT>::iterator rnextiter = rArea.begin();
+	list<POINT>::iterator rnextpiter = rArea.begin();
+	rnextpiter++;
+	rnextpiter++;
 	rnextiter++;
 
-	for (; rareaiter != rArea.end(); rareaiter++, rnextiter++)
+	for (; rareaiter != rArea.end(); rareaiter++, rnextiter++, rnextpiter++)
 	{
+		if (rnextpiter == rArea.end())
+			rnextpiter = rArea.begin();
 		if (rnextiter == rArea.end())
 			rnextiter = rArea.begin();
 
-		if ((*rareaiter).x == (*rnextiter).x &&
-			(*rareaiter).y == (*rnextiter).y)
+		if (((*rareaiter).x == (*rnextiter).x && (*rareaiter).x == (*rnextpiter).x)
+			|| ((*rareaiter).y == (*rnextiter).y && (*rareaiter).y == (*rnextpiter).y))
 		{
 			rArea.erase(rnextiter);
-			rArea.erase(rareaiter);
-			break;
+			rareaiter = rArea.begin();
+			rnextiter = rArea.begin();
+			rnextpiter = rArea.begin();
+			rnextpiter++;
+			rnextpiter++;
+			rnextiter++;
 		}
 	}
 
