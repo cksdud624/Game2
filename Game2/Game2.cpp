@@ -9,6 +9,7 @@
 using namespace Gdiplus;
 #pragma comment(lib, "gdiplus.lib") 
 
+
 ULONG_PTR m_gdiplusToken;
 
 #define MAX_LOADSTRING 100
@@ -20,21 +21,22 @@ HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
-
 //함수
 void Update();
 void DrawDoubleBuffering(HDC& hdc);
 
 
-#ifdef UNICODE
+static Image* image;//이미지
 
-#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
+static Image* background;//배경화면
+static Image* life;//체력
+static Image* cursor;
+static Image* wall;
+static TextureBrush* myBrush;
+static TextureBrush* wallBrush;
+static Image* explode;
 
-#else
-
-#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console") 
-
-#endif
+static int fontcolor = 0;
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -71,7 +73,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     clock_t oldtime = clock();
     clock_t newtime;
-
+    clock_t oldanitime = clock();
+    clock_t newanitime;
     while (true)
     {
         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -89,10 +92,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         else
         {
             newtime = clock();
+            newanitime = clock();
             if (newtime - oldtime >= 34)
             {
                 oldtime = newtime;
                 Update();
+            }
+
+            if (newanitime - oldanitime >= 100)
+            {
+                oldanitime = newanitime;
+                (*image).RotateFlip(Rotate90FlipNone);
+                fontcolor = 1 - fontcolor;
             }
         }
     }
@@ -201,8 +212,13 @@ static vector<ObjectCircle> circles;//오브젝트
 static clock_t oldanimationtimer = clock();
 static clock_t newanimationtimer;
 
-static POINT* temp;
-static Image* image;
+static Point* temp;
+
+static int backgroundupdate = 1;
+
+static int explodeframeX = 0;
+static int explodeframeY = 0;
+static vector<POINT> explodepoints;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -232,16 +248,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             circle.setAngle(randomize(0, 359));
             circles.push_back(circle);
         }
-        temp = new POINT[Area.size() + 1];
+        temp = new Point[Area.size() + 1];
         int i = 0;
+
         for (POINT x : Area)//도형을 그림
         {
-            temp[i++] = x;
+            temp[i].X = x.x;
+            temp[i].Y = x.y;
+            i++;
         }
+
         FullArea = GetArea(Area);
         PerArea = 1;
 
-        image = Image::FromFile(L"images/1.jpg");
+        image = Image::FromFile(L"images/1.png");
+        background = Image::FromFile(L"images/2.jpg");
+        life = Image::FromFile(L"images/3.png");
+        cursor = Image::FromFile(L"images/4.png");
+        wall = Image::FromFile(L"images/5.png");
+
+        myBrush = new TextureBrush(background);
+        wallBrush = new TextureBrush(wall);
+
+        explode = Image::FromFile(L"images/explode.png");
+
     }
         break;
     case WM_COMMAND:
@@ -267,6 +297,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(page != 1)
                 page++;
         }
+        if (wParam == 'p')
+            page++;
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -410,6 +442,7 @@ void Update()
             {
                 movepoints.push_back({ BeforeX, BeforeY });
                 linedirection = player.getDirection();
+                backgroundupdate = 1;
             }
             player.setDrawing(1);
             if (!(player.getDirection() == -1 || player.getDirection() == linedirection//전 위치로 이동
@@ -476,21 +509,22 @@ void Update()
                     {
                         if (OnArea(Area, circles[i]) == false)
                         {
+                            POINT temp = { circles[i].getX(), circles[i].getY()};
+                            explodepoints.push_back(temp);
                             circles.erase(circles.begin() + i);
-                            if (circles.size() > 0)
-                                i = 0;
-                            else
-                                break;
+                            i = -1;
                         }
                     }
 
                     delete[] temp;
 
-                    temp = new POINT[Area.size() + 1];
+                    temp = new Point[Area.size() + 1];
                     int i = 0;
                     for (POINT x : Area)//도형을 그림
                     {
-                        temp[i++] = x;
+                        temp[i].X = x.x;
+                        temp[i].Y = x.y;
+                        i++;
                     }
 
                     cannotdraw = 1;
@@ -575,18 +609,32 @@ void DrawDoubleBuffering(HDC& hdc)
     if (hBit == NULL)
         hBit = CreateCompatibleBitmap(hdc, rectView.right, rectView.bottom);
     oldBit = (HBITMAP)SelectObject(mem1dc, hBit);
-    FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
     SetTextAlign(mem1dc, TA_CENTER);
+    Graphics g(mem1dc);
+    Rect rect;
     if (page == 1)
     {
 
         POINT playerpoint = { player.getX(), player.getY() };
+        rect.X = 0;
+        rect.Y = 0;
+        rect.Width = rectView.right;
+        rect.Height = rectView.bottom;
+        g.FillRectangle(myBrush, rect);
 
+        g.FillPolygon(wallBrush, temp, Area.size());
+        /*
         HBRUSH myBrush = (HBRUSH)CreateSolidBrush(RGB(192, 192, 192));
         HBRUSH oldBrush = (HBRUSH)SelectObject(mem1dc, myBrush);
         Polygon(mem1dc, temp, Area.size());
         SelectObject(mem1dc, oldBrush);
         DeleteObject(myBrush);
+        */
+
+        HPEN hNewPen = CreatePen(PS_SOLID, 3, RGB(0, 0, 255));
+        HPEN hOldPen = (HPEN)SelectObject(mem1dc, hNewPen);
+
+
 
 
         for (int i = 0; i < movepoints.size(); i++)//이동한 선을 그림
@@ -604,25 +652,66 @@ void DrawDoubleBuffering(HDC& hdc)
             else
                 DrawLine(mem1dc, ReturnLines[i], ReturnLines[i + 1]);
         }
-   
-        _stprintf_s(temptchar, L"남은 공간 : %.1lf", PerArea * 100);
-        TextOut(mem1dc, 100, 100, temptchar, _tcslen(temptchar));
-        _stprintf_s(temptchar, L"남은 체력 : %d", player.getLife());
-        TextOut(mem1dc, 100, 120, temptchar, _tcslen(temptchar));
-        DrawRectangle(mem1dc, player);
-        Graphics g(mem1dc);
-        Rect rect[6];
-        for (int i = 0; i < circles.size(); i++)
+
+        _stprintf_s(temptchar, L"LeftArea : %.1lf", PerArea * 100);
+
+        Font font(L"Arial", 20, FontStyleBold, UnitPixel);
+        SolidBrush sbrush(Color::Black);
+        StringFormat format;
+
+        format.SetAlignment(StringAlignmentNear);
+        format.SetLineAlignment(StringAlignmentCenter);
+        g.DrawString(temptchar, _tcslen(temptchar),&font,RectF(20, 0, 200, 50), &format, &sbrush);
+        //TextOut(mem1dc, 100, 100, temptchar, _tcslen(temptchar));
+
+        for (int i = 0; i < player.getLife(); i++)
         {
-            rect[i].X = circles[i].getX();
-            rect[i].Y = circles[i].getY();
-            rect[i].Width = circles[i].getRadius() * 2;
-            rect[i].Height = circles[i].getRadius() * 2;
+            rect.X = 20 + i * 25;
+            rect.Y = 40;
+            rect.Width = 25;
+            rect.Height = 20;
+            g.DrawImage(life, rect);
         }
+        rect.X = player.getX() - player.getWidth() * 0.6;
+        rect.Y = player.getY() - player.getWidth() * 0.6;
+        rect.Width = player.getWidth() * 1.2;
+        rect.Height = player.getHeight() * 1.2;
+
+        g.DrawImage(cursor, rect);
 
         for (int i = 0; i < circles.size(); i++)
         {
-            g.DrawImage(image, rect[i]);
+            rect.X = circles[i].getX() - circles[i].getRadius();
+            rect.Y = circles[i].getY() - circles[i].getRadius();
+            rect.Width = circles[i].getRadius() * 2;
+            rect.Height = circles[i].getRadius() * 2;
+            g.DrawImage(image, rect);
+        }
+
+        if (explodepoints.size() > 0)
+        {
+            for (int i = 0; i < explodepoints.size(); i++)
+            {
+                rect.X = explodepoints[i].x - 40;
+                rect.Y = explodepoints[i].y - 40;
+                rect.Width = 80;
+                rect.Height = 80;
+
+                g.DrawImage(explode, rect, explodeframeX * 100, explodeframeY * 100, 100, 100, UnitPixel);
+
+            }
+            explodeframeX++;
+            if (explodeframeX >= 10)
+            {
+                explodeframeX = 0;
+                explodeframeY++;
+            }
+
+            if (explodeframeY >= 6)
+            {
+                explodeframeY = 0;
+                explodepoints.clear();
+            }
         }
     }
 
@@ -632,16 +721,42 @@ void DrawDoubleBuffering(HDC& hdc)
         HFONT holdfont = (HFONT)SelectObject(mem1dc, hfont);
         if (player.getLife() <= 0)
         {
-            TextOut(mem1dc, 220, 300, L"Game Over", _tcslen(L"Game Over"));
+            FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW + 2));
+            Font font(L"Arial", 60, FontStyleBold, UnitPixel);
+            StringFormat format;
+            format.SetAlignment(StringAlignmentCenter);
+            format.SetLineAlignment(StringAlignmentCenter);
+
+            SolidBrush sbrush(Color::OrangeRed);
+            g.DrawString(L"Game Over", _tcslen(L"Game Over"), &font, RectF(0, 0, rectView.right, rectView.bottom), &format, &sbrush);
         }
         else
         {
-            TextOut(mem1dc, 220, 300, L"Game Clear", _tcslen(L"Game Clear"));
+            rect.X = 0;
+            rect.Y = 0;
+            rect.Width = rectView.right;
+            rect.Height = rectView.bottom;
+            g.FillRectangle(myBrush, rect);
+            Font font(L"Arial", 60, FontStyleBold, UnitPixel);
+            StringFormat format;
+            format.SetAlignment(StringAlignmentCenter);
+            format.SetLineAlignment(StringAlignmentCenter);
+            if (fontcolor == 0)
+            {
+                SolidBrush sbrush(Color::Blue);
+                g.DrawString(L"Game Clear", _tcslen(L"Game Clear"), &font, RectF(0, 0, rectView.right, rectView.bottom), &format, &sbrush);
+            }
+            else
+            {
+                SolidBrush sbrush(Color::Red);
+                g.DrawString(L"Game Clear", _tcslen(L"Game Clear"), &font, RectF(0, 0, rectView.right, rectView.bottom), &format, &sbrush);
+            }
         }
     }
 
     if (page == 0)
     {
+        FillRect(mem1dc, &rectView, GetSysColorBrush(COLOR_WINDOW));
         HFONT hfont = CreateFont(70, 0, 0, 0, 0, 0, 0, 0, HANGEUL_CHARSET, 0, 0, 0, VARIABLE_PITCH | FF_ROMAN, TEXT("돋움"));
         HFONT holdfont = (HFONT)SelectObject(mem1dc, hfont);
         TextOut(mem1dc, 400, 300, L"갈스패닉 모작", _tcslen(L"갈스패닉 모작"));
@@ -651,7 +766,8 @@ void DrawDoubleBuffering(HDC& hdc)
     }
 
     BitBlt(hdc, 0, 0, rectView.right, rectView.bottom, mem1dc, 0, 0, SRCCOPY);
-
+    //GdiTransparentBlt(hdc, 0, 0, rectView.right, rectView.bottom, mem1dc,
+        //0, 0, rectView.right, rectView.bottom, RGB(255, 255, 255));
     SelectObject(mem1dc, oldBit);
     DeleteDC(mem1dc);
 }
